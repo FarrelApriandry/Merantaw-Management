@@ -1,0 +1,26 @@
+---
+// src\layouts\AuthLayout.astro
+import "@/styles/global.css";
+const { title = "Welcome Back" } = Astro.props;
+import { Toaster } from "@/components/ui/sonner"
+---
+
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>{title} | Merantaw Management</title>
+    </head>
+
+    <body class="min-h-screen flex items-center justify-center bg-[#192C56] relative overflow-hidden text-white">
+        <!-- background effect -->
+        <div class="absolute inset-0 bg-gradient-to-br from-[#192C56] via-[#0F1B3E] to-[#0D132B] opacity-95"></div>
+        <div class="absolute w-[500px] h-[500px] bg-blue-500/30 blur-[120px] rounded-full -top-32 -left-32 animate-pulse"></div>
+        <div class="absolute w-[400px] h-[400px] bg-cyan-400/20 blur-[100px] rounded-full -bottom-20 -right-20 animate-pulse"></div>
+        
+        <main class="z-10 w-full max-w-md px-6 py-10 animate-fadeInUp">
+            <Toaster />
+            <slot />
+        </main>
+    </body>
+</html>
