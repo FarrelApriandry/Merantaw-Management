@@ -2,7 +2,7 @@
 // src\layouts\AuthLayout.astro
 import "@/styles/global.css";
 const { title = "Welcome Back" } = Astro.props;
-import { Toaster } from "@/components/ui/sonner"
+import ToasterClient from "@/components/ui/ToasterClient";
 ---
 
 <html lang="en">
@@ -19,8 +19,8 @@ import { Toaster } from "@/components/ui/sonner"
         <div class="absolute w-[400px] h-[400px] bg-cyan-400/20 blur-[100px] rounded-full -bottom-20 -right-20 animate-pulse"></div>
         
         <main class="z-10 w-full max-w-md px-6 py-10 animate-fadeInUp">
-            <Toaster />
             <slot />
+            <ToasterClient client:load/>
         </main>
     </body>
 </html>

@@ -3,6 +3,7 @@
 
 @custom-variant dark (&:is(.dark *));
 
+
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -41,7 +42,7 @@
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
-:root {
+/* :root {
   --radius: 0.625rem;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
@@ -74,6 +75,17 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+} */
+
+/* Design tokens */
+:root{
+  --bg: #f8fbff;
+  --primary: #2563eb;    /* blue-600 */
+  --primary-600: #1e40af;/* blue-800 */
+  --accent: #f59e0b;     /* amber-500 */
+  --muted: #64748b;      /* slate-500 */
+  --card: #ffffff;
+  --glass: rgba(255,255,255,0.6);
 }
 
 .dark {
@@ -117,6 +129,21 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Utility-ish helpers */
+.btn-primary {
+  @apply inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-white font-semibold shadow-md;
+  background: linear-gradient(90deg,var(--primary),var(--primary-600));
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+
+.btn-primary:hover{ transform: translateY(-3px); box-shadow: 0 10px 30px rgba(37,99,235,0.18); }
+
+.btn-ghost {
+  @apply inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border;
+  border-color: rgba(15,23,42,0.06);
+  background: rgba(255,255,255,0.7);
 }
 
 @keyframes fadeInUp {

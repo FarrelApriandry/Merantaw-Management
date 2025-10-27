@@ -1,0 +1,9 @@
+---
+import DashboardLayout from "@/layouts/DashboardLayout.astro";
+import FormContent from "@/components/layout/FormContent";
+---
+
+<DashboardLayout title="Forms">
+    <h1 class="text-2xl font-semibold mb-6 text-white/80">Manage Data</h1>
+    <FormContent client:load />
+</DashboardLayout>

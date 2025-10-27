@@ -1,0 +1,25 @@
+---
+// src\layouts\DashboardLayout.astro
+import "@/styles/global.css";
+import SidebarController from "@/components/layout/SidebarController";
+const { title = "Dashboard" } = Astro.props;
+import ToasterClient from "@/components/ui/ToasterClient";
+import AuthProtector from "@/components/auth/AuthProtector";
+---
+
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>{title} | Meragement</title>
+    </head>
+    <body>
+        <SidebarController client:load Header={title}>
+            <!-- Slot Layout -->
+            <AuthProtector client:load>
+                <slot />
+                <ToasterClient client:load/>
+            </AuthProtector>
+        </SidebarController>
+    </body>
+</html>
