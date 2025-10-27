@@ -13,9 +13,9 @@ import {
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { AdminProtector } from "../auth/PagesProtector";
 
 export default function Sidebar({ isOpen, toggleSidebar }) {
-    // daftar space (nanti bisa di-fetch dari Firebase)
     const spaces = [
     { id: "npb", name: "Space (NPB)" },
     { id: "ar", name: "Space (AR)" },
@@ -23,7 +23,7 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
     { id: "dnd", name: "Space (DND)" },
     ];
 
-    // state buat setiap dropdown
+    const {isUserAdmin} = AdminProtector();
     const [openSpaces, setOpenSpaces] = useState({});
 
     const toggleSpace = (id) => {
@@ -84,14 +84,59 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
         </div>
 
         {/* Navigation */}
+        {/* Navigation */}
         <nav className="flex flex-col gap-1.5">
-        <NavItem icon={<Home size={18} />} label="Home" href="/dashboard" isOpen={isOpen} currentPath={currentPath} />
-        <NavItem icon={<Inbox size={18} />} label="Inbox" href="/dashboard/inbox" isOpen={isOpen} currentPath={currentPath} />
-        <NavItem icon={<Users size={18} />} label="Teams" href="/dashboard/teams" isOpen={isOpen} currentPath={currentPath} />
-        <NavItem icon={<FileText size={18} />} label="Forms" href="/dashboard/forms" isOpen={isOpen} currentPath={currentPath} />
-        <NavItem icon={<Calendar size={18} />} label="Calendar" href="/dashboard/calendar" isOpen={isOpen} currentPath={currentPath} />
-        <NavItem icon={<Target size={18} />} label="Milestone" href="/dashboard/milestone" isOpen={isOpen} currentPath={currentPath} />
-        <NavItem icon={<MessageCircle size={18} />} label="Discussion" href="/dashboard/discussion" isOpen={isOpen} currentPath={currentPath} />
+            <NavItem 
+                icon={<Home size={18} />} 
+                label="Home" 
+                href="/dashboard" 
+                isOpen={isOpen} 
+                currentPath={currentPath} 
+            />
+            <NavItem 
+                icon={<Inbox size={18} />} 
+                label="Inbox" 
+                href="/dashboard/inbox" 
+                isOpen={isOpen} 
+                currentPath={currentPath} 
+            />
+            <NavItem 
+                icon={<Users size={18} />} 
+                label="Teams" 
+                href="/dashboard/teams" 
+                isOpen={isOpen} 
+                currentPath={currentPath} 
+            />
+            {isUserAdmin && (
+                <NavItem 
+                    icon={<FileText size={18} />} 
+                    label="Forms" 
+                    href="/dashboard/forms" 
+                    isOpen={isOpen} 
+                    currentPath={currentPath} 
+                /> 
+            )}
+            <NavItem
+                icon={<Calendar size={18} />}
+                label="Calendar" 
+                href="/dashboard/calendar" 
+                isOpen={isOpen} 
+                currentPath={currentPath}
+            />
+            <NavItem 
+                icon={<Target size={18} />} 
+                label="Milestone" 
+                href="/dashboard/milestone" 
+                isOpen={isOpen} 
+                currentPath={currentPath} 
+            />
+            <NavItem 
+                icon={<MessageCircle size={18} />} 
+                label="Discussion" 
+                href="/dashboard/discussion" 
+                isOpen={isOpen} 
+                currentPath={currentPath}
+            />
 
         {/* Dynamic Space Dropdowns */}
         <div className="mt-3">
