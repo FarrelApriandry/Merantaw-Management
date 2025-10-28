@@ -9,14 +9,45 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import StatCard from "../dashboard/StatCard";
 import ProjectCard from "../dashboard/ProjectCard";
 import TaskCard from "../dashboard/TaskCard";
+import { getUsers } from "@/lib/api/users";
+import { getProjects } from "@/lib/api/projects";
+import { useState, useEffect } from "react";
 
 export default function DashboardContent() {
+
+    const [users, setUsers] = useState([]);
+    const [space, setSpace] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                setLoading(true);
+                const userData = await getUsers();
+                const spaceData = await getProjects();
+                setSpace(spaceData);
+                setUsers(userData);
+            } catch (err) {
+                console.error('Error fetching data:', err);
+                setError('Failed to load data');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchData();
+    }, []);
+
+    const activeUsers = users.filter(user => user.isActive).length;
+    const activeSpace = space.filter(space => space.status === "active").length;
+
     return (
         <div className="space-y-8">
         {/* --- Stats Section --- */}
         <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <StatCard icon={<Users />} label="Active Members" value="12" />
-            <StatCard icon={<Folder />} label="Projects" value="5" />
+            <StatCard icon={<Users />} label="Active Members" value={loading ? "..." : activeUsers.toString()} />
+            <StatCard icon={<Folder />} label="Space" value={loading ? "..." : activeSpace.toString()} />
             <StatCard icon={<Target />} label="Goals Achieved" value="8" />
         </section>
 

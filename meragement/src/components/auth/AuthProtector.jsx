@@ -6,11 +6,6 @@ import { useEffect, useState } from "react";
  * - Memeriksa `localStorage.userData` untuk menentukan apakah user terautentikasi.
  * - Jika tidak ada/invalid -> redirect ke /login
  * - Jika ada -> render children
- *
- * Cara pakai:
- * - Import dan gunakan sebagai wrapper di DashboardLayout.astro
- * - Karena ini React client component, render dengan `client:load` di Astro:
- *    <AuthProtector client:load> ... </AuthProtector>
  */
 
 export default function AuthProtector({ children }) {

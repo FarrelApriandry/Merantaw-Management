@@ -1,6 +1,6 @@
 import { useState,useEffect } from "react";
 
-export function PageNavigation({ href }) {
+function PageNavigation({ href }) {
     
     useEffect(() => {
         window.location.href = href;
@@ -9,7 +9,7 @@ export function PageNavigation({ href }) {
     return null;
 }
 
-export function AdminProtector() {
+function AdminProtector() {
     const [isUserAdmin, setIsUserAdmin] = useState(false);
 
     useEffect(() => {
@@ -23,4 +23,9 @@ export function AdminProtector() {
     }, []);
 
     return { isUserAdmin };
+}
+
+export {
+    PageNavigation,
+    AdminProtector,
 }
