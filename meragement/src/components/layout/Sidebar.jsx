@@ -10,6 +10,7 @@ import {
     Folder,
     ChevronDown,
     ChevronLeft,
+    ClipboardList,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -33,10 +34,11 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
     // handle current path supaya gak bentrok SSR
     const [currentPath, setCurrentPath] = useState("");
     useEffect(() => {
-    if (typeof window !== "undefined") {
-        setCurrentPath(window.location.pathname);
-    }
+        if (typeof window !== "undefined") {
+            setCurrentPath(window.location.pathname);
+        }
     }, []);
+
 
     return (
     <motion.aside
@@ -84,19 +86,11 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
         </div>
 
         {/* Navigation */}
-        {/* Navigation */}
         <nav className="flex flex-col gap-1.5">
             <NavItem 
                 icon={<Home size={18} />} 
                 label="Home" 
                 href="/dashboard" 
-                isOpen={isOpen} 
-                currentPath={currentPath} 
-            />
-            <NavItem 
-                icon={<Inbox size={18} />} 
-                label="Inbox" 
-                href="/dashboard/inbox" 
                 isOpen={isOpen} 
                 currentPath={currentPath} 
             />
@@ -107,6 +101,22 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
                 isOpen={isOpen} 
                 currentPath={currentPath} 
             />
+            <NavItem 
+                icon={<ClipboardList size={18} />} 
+                label="Projects" 
+                href="/dashboard/projects" 
+                isOpen={isOpen} 
+                currentPath={currentPath} 
+            />
+            {isUserAdmin && (
+                <NavItem 
+                    icon={<Inbox size={18} />} 
+                    label="Inbox" 
+                    href="/dashboard/inbox" 
+                    isOpen={isOpen} 
+                    currentPath={currentPath} 
+                />
+            )}
             {isUserAdmin && (
                 <NavItem 
                     icon={<FileText size={18} />} 

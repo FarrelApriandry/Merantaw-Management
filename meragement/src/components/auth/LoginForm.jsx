@@ -1,6 +1,6 @@
 // src/components/auth/LoginForm.jsx
-import { toast } from "sonner";
-import { useState } from "react";
+import { toast, Toaster } from "sonner";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth, db } from "@/lib/firebaseConfig";
@@ -68,6 +68,34 @@ export default function LoginForm() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+        const userData = localStorage.getItem("userData");
+        if (userData) {
+            const parsedData = JSON.parse(userData);
+            if (parsedData && parsedData.email) {
+                // Delay untuk toast
+                const toastDelay = setTimeout(() => {
+                    toast.success("Anda sudah login!", {
+                        description: `Selamat datang kembali, ${parsedData.name || "user"}!`,
+                    });
+                }, 1000); // Delay 1 detik untuk toast
+
+                // Delay untuk redirect
+                const redirectDelay = setTimeout(() => {
+                    window.location.href = "/dashboard/";
+                }, 2500); // Delay 2.5 detik untuk redirect
+
+                // Cleanup function
+                return () => {
+                    clearTimeout(toastDelay);
+                    clearTimeout(redirectDelay);
+                };
+            }
+        }
+    }
+}, []);
 
   return (
     <motion.div

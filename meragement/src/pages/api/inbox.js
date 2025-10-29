@@ -4,7 +4,7 @@ export async function GET() {
   try {
         const config = {
         imap: {
-            user: "merantawid@gmail.com",
+            user: import.meta.env.PUBLIC_SMTP_USER,
             password: import.meta.env.PUBLIC_VITE_GMAIL_APP_PASSWORD,
             host: "imap.gmail.com",
             port: 993,
@@ -37,11 +37,8 @@ export async function GET() {
             date: new Date(header.date?.[0] || "").getTime() || 0,
             };
         })
-        // urutkan dari terbaru → terlama
         .sort((a, b) => b.date - a.date)
-        // ambil cuma 50 teratas
         .slice(0, 15)
-        // ubah date-nya biar readable lagi
         .map((email) => ({
             ...email,
             date: new Date(email.date).toLocaleString(),
