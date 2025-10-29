@@ -1,7 +1,7 @@
 // Sidebar.jsx
 import {
     Home, Inbox, Users, FileText, Calendar, Target,
-    MessageCircle, Folder, ChevronDown, ChevronLeft, ClipboardList,
+    MessageCircle, Folder, ChevronDown, ChevronLeft, Earth,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -133,7 +133,7 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
             <nav className="flex flex-col gap-1.5">
             <NavItem icon={<Home size={18} />} label="Home" href="/dashboard" isOpen={isOpen} currentPath={currentPath} />
             <NavItem icon={<Users size={18} />} label="Teams" href="/dashboard/teams" isOpen={isOpen} currentPath={currentPath} />
-            <NavItem icon={<ClipboardList size={18} />} label="Projects" href="/dashboard/projects" isOpen={isOpen} currentPath={currentPath} />
+            <NavItem icon={<Earth size={18} />} label="Space" href="/dashboard/spaces" isOpen={isOpen} currentPath={currentPath} />
             {isUserAdmin && <NavItem icon={<Inbox size={18} />} label="Inbox" href="/dashboard/inbox" isOpen={isOpen} currentPath={currentPath} />}
             {isUserAdmin && <NavItem icon={<FileText size={18} />} label="Forms" href="/dashboard/forms" isOpen={isOpen} currentPath={currentPath} />}
             <NavItem icon={<Calendar size={18} />} label="Calendar" href="/dashboard/calendar" isOpen={isOpen} currentPath={currentPath} />
