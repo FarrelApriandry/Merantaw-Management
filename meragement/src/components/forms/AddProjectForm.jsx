@@ -34,6 +34,7 @@ export default function AddProjectForm() {
     const [teams, setTeams] = useState([]);
     const [formData, setFormData] = useState({
         title: "",
+        shortCall: "",
         description: "",
         status: "active",
         priority: "medium",
@@ -92,14 +93,15 @@ export default function AddProjectForm() {
         setFormData({
             title: "",
             description: "",
+            shortCall: "",
             status: "active",
             priority: "medium",
             teamId: "",
             assignedUsers: [],
         });
         } catch (error) {
-        console.error(error);
-        toast.error("❌ Failed to create project.");
+            console.error(error);
+            toast.error("❌ Failed to create project.");
         }
     };
 
@@ -123,6 +125,19 @@ export default function AddProjectForm() {
                     id="title"
                     name="title"
                     value={formData.title}
+                    onChange={handleChange}
+                    className="bg-white/10 text-white border-white/20 focus-visible:ring-cyan-400"
+                    required
+                />
+                </div>
+                <div>
+                <Label htmlFor="shortCall" className="text-white/80">
+                    Short Call
+                </Label>
+                <Input
+                    id="shortCall"
+                    name="shortCall"
+                    value={formData.shortCall}
                     onChange={handleChange}
                     className="bg-white/10 text-white border-white/20 focus-visible:ring-cyan-400"
                     required

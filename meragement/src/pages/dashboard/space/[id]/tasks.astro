@@ -1,0 +1,11 @@
+---
+export const prerender = false;
+
+import TaskPage from "@/components/space/tasks/TaskPage.jsx";
+import DashboardLayout from "@/layouts/DashboardLayout.astro";
+
+const { id } = Astro.params;
+---
+<DashboardLayout title={`Tasks ${id ? `- Space ${id}` : ""}`}>
+    <TaskPage projectId={id} client:load />
+</DashboardLayout>
