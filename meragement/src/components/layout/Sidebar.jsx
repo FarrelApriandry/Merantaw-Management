@@ -10,9 +10,11 @@ import { AdminProtector } from "../auth/PagesProtector";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebaseConfig";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
+import { useCurrentUser } from "@/lib/hooks/useCurrentUser";
 
 export default function Sidebar({ isOpen, toggleSidebar }) {
-    const { isUserAdmin } = AdminProtector();
+    const user = useCurrentUser();
+    const isAdmin = user?.role === "admin";
     const [spaces, setSpaces] = useState([]);
     const [openSpaces, setOpenSpaces] = useState({});
     const [currentPath, setCurrentPath] = useState("");
@@ -26,47 +28,49 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
     
         const auth = getAuth();
     
-        // wait for auth to be ready
-        const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
-            if (!user) {
+        const unsubscribeAuth = onAuthStateChanged(auth, (firebaseUser) => {
+            if (!firebaseUser) {
                 setSpaces([]);
                 setLoadingSpaces(false);
                 return;
             }
     
-            // user ready -> build query
             try {
-                const q = query(
-                    collection(db, "projects"),
-                    where("assignedUsers", "array-contains", user.uid)
-                );
-        
+                const userData = user; // dari useCurrentUser
+                const userRole = userData?.role || "user";
+    
+                // 🔹 Kalau admin → ambil semua projects
+                const q =
+                    userRole === "admin"
+                        ? collection(db, "projects")
+                        : query(
+                            collection(db, "projects"),
+                            where("assignedUsers", "array-contains", firebaseUser.uid)
+                        );
+    
                 const unsubSnapshot = onSnapshot(
                     q,
                     (snapshot) => {
-                    const projectList = snapshot.docs.map((doc) => {
-                        const data = doc.data();
-                        return {
-                            id: doc.id,
-                            shortCall: data?.shortCall || "N/A",
-                            title: data?.title || "(no title)",
-                        };
-                    });
-                    setSpaces(projectList);
-                    setSpacesError(null);
-                    setLoadingSpaces(false);
+                        const projectList = snapshot.docs.map((doc) => {
+                            const data = doc.data();
+                            return {
+                                id: doc.id,
+                                shortCall: data?.shortCall || "N/A",
+                                title: data?.title || "(no title)",
+                            };
+                        });
+                        setSpaces(projectList);
+                        setSpacesError(null);
+                        setLoadingSpaces(false);
                     },
                     (error) => {
-                    setSpaces([]);
-                    setSpacesError(error);
-                    setLoadingSpaces(false);
+                        setSpaces([]);
+                        setSpacesError(error);
+                        setLoadingSpaces(false);
                     }
                 );
-        
-                return () => {
-                    console.log("Sidebar: unsubscribing from projects snapshot");
-                    unsubSnapshot();
-                };
+    
+                return () => unsubSnapshot();
             } catch (err) {
                 console.error("Sidebar: unexpected error setting up query:", err);
                 setSpaces([]);
@@ -75,12 +79,8 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
             }
         });
     
-        // cleanup auth listener on unmount
-        return () => {
-            console.log("Sidebar: unsubscribing auth listener");
-            unsubscribeAuth();
-        };
-    }, []);
+        return () => unsubscribeAuth();
+    }, [user]);    
 
     const toggleSpace = (id) => {
         setOpenSpaces((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -133,8 +133,8 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
             <NavItem icon={<Home size={18} />} label="Home" href="/dashboard" isOpen={isOpen} currentPath={currentPath} />
             <NavItem icon={<Users size={18} />} label="Teams" href="/dashboard/teams" isOpen={isOpen} currentPath={currentPath} />
             <NavItem icon={<Earth size={18} />} label="Space" href="/dashboard/spaces" isOpen={isOpen} currentPath={currentPath} />
-            {isUserAdmin && <NavItem icon={<Inbox size={18} />} label="Inbox" href="/dashboard/inbox" isOpen={isOpen} currentPath={currentPath} />}
-            {isUserAdmin && <NavItem icon={<FileText size={18} />} label="Forms" href="/dashboard/forms" isOpen={isOpen} currentPath={currentPath} />}
+            {isAdmin && <NavItem icon={<Inbox size={18} />} label="Inbox" href="/dashboard/inbox" isOpen={isOpen} currentPath={currentPath} />}
+            {isAdmin && <NavItem icon={<FileText size={18} />} label="Forms" href="/dashboard/forms" isOpen={isOpen} currentPath={currentPath} />}
             <NavItem icon={<Calendar size={18} />} label="Calendar" href="/dashboard/calendar" isOpen={isOpen} currentPath={currentPath} />
             <NavItem icon={<Target size={18} />} label="Milestone" href="/dashboard/milestone" isOpen={isOpen} currentPath={currentPath} />
             <NavItem icon={<MessageCircle size={18} />} label="Discussion" href="/dashboard/discussion" isOpen={isOpen} currentPath={currentPath} />
