@@ -1,126 +1,220 @@
-import { useEffect, useState } from "react";
-import { doc, getDoc, collection, onSnapshot, addDoc, serverTimestamp } from "firebase/firestore";
+// src/components/space/tasks/TaskPage.jsx
+import { useEffect, useState, useCallback } from "react";
+import { collection, onSnapshot, addDoc, serverTimestamp, doc, getDoc, writeBatch } from "firebase/firestore";
 import { db } from "@/lib/firebaseConfig";
-import { Plus, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
+import { Trash2, Plus, SquareCheckBig } from "lucide-react";
+import AddTaskRow from "./AddTaskRow";
+import { toast } from "sonner";
 
 export default function TaskPage({ projectId }) {
-    const [project, setProject] = useState(null);
-    const [tasks, setTasks] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [newTask, setNewTask] = useState("");
+  const [serverTasks, setServerTasks] = useState([]);
+  const [pendingTasks, setPendingTasks] = useState([]);
+  const [project, setProject] = useState(null);
+  const [members, setMembers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [creatingRow, setCreatingRow] = useState(false);
+  const [selected, setSelected] = useState(new Set());
 
-    // 🧩 fetch project info client-side
-    useEffect(() => {
-        if (!projectId) return;
+  // Fetch Project & Members
+  useEffect(() => {
+    if (!projectId) return;
+    (async () => {
+      const snap = await getDoc(doc(db, "projects", projectId));
+      if (!snap.exists()) return;
+      const data = { id: snap.id, ...snap.data() };
+      setProject(data);
 
-        const fetchProject = async () => {
-        try {
-            const snap = await getDoc(doc(db, "projects", projectId));
-            if (snap.exists()) {
-            setProject({ id: snap.id, ...snap.data() });
-            } else {
-            console.warn("TaskPage: project not found");
-            console.log("projectId from Astro:", projectId);
-            console.log("project snapshot:", snap.exists(), snap.data());
-            }
-        } catch (err) {
-            console.error("TaskPage: Error fetching project:", err);
-        }
-        };
+      const ids = data.assignedUsers || [];
+      const results = await Promise.all(ids.map((uid) => getDoc(doc(db, "users", uid))));
+      const users = results.filter((r) => r.exists()).map((r) => ({ id: r.id, ...(r.data() || {}) }));
+      setMembers(users);
+      console.log(combinedList)
+    })();
+  }, [projectId]);
 
-        fetchProject();
-    }, [projectId]);
+  // Realtime listener
+  useEffect(() => {
+    if (!projectId) return;
+    const colRef = collection(db, `projects/${projectId}/tasks`);
+    const unsub = onSnapshot(colRef, (snap) => {
+      const list = snap.docs.map((d) => ({ id: d.id, ...(d.data() || {}) }));
+      setServerTasks(list.sort((a, b) => b.createdAt - a.createdAt));
+      setLoading(false);
+    });
+    return () => unsub();
+  }, [projectId]);
 
-    // 🧩 realtime listener for tasks
-    useEffect(() => {
-        if (!projectId) return;
+  // Add Task
+  const handleAddOptimistic = useCallback(async (payload) => {
+    const tempId = `tmp-${Date.now()}`;
+    setPendingTasks((prev) => [{ id: tempId, ...payload, optimistic: true }, ...prev]);
+    try {
+      const ref = await addDoc(collection(db, `projects/${projectId}/tasks`), {
+        ...payload,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+      setPendingTasks((prev) => prev.filter((t) => t.id !== tempId));
+      toast.success("Task added successfully!", { description: payload.title });
+      return ref.id;
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to add task");
+    }
+  }, [projectId]);
 
-        const unsub = onSnapshot(
-        collection(db, `projects/${projectId}/tasks`),
-        (snapshot) => {
-            const taskList = snapshot.docs.map((d) => ({
-            id: d.id,
-            ...d.data(),
-            }));
-            setTasks(taskList);
-            setLoading(false);
-        },
-        (error) => {
-            console.error("TaskPage: Error fetching tasks:", error);
-            setLoading(false);
-        }
-        );
+  // Batch delete
+  const handleBatchDelete = async () => {
+    if (!selected.size) return;
+    if (!confirm(`Delete ${selected.size} task(s)?`)) return;
 
-        return () => unsub();
-    }, [projectId]);
+    try {
+      const batch = writeBatch(db);
+      Array.from(selected).forEach((id) => batch.delete(doc(db, `projects/${projectId}/tasks`, id)));
+      await batch.commit();
+      setSelected(new Set());
+      toast.success("Tasks deleted successfully", { description: `${selected.size} deleted.` });
+    } catch (err) {
+      toast.error("Failed to delete tasks", { description: err.message });
+    }
+  };
 
-    // 🧩 add task
-    const handleAddTask = async () => {
-        if (!newTask.trim()) return;
-        try {
-        await addDoc(collection(db, `projects/${projectId}/tasks`), {
-            title: newTask,
-            status: "todo",
-            createdAt: serverTimestamp(),
-        });
-        setNewTask("");
-        } catch (err) {
-        console.error("Error adding task:", err);
-        }
-    };
+  const toggleSelect = (taskId) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      next.has(taskId) ? next.delete(taskId) : next.add(taskId);
+      return next;
+    });
 
-    return (
-        <div className="p-6 flex flex-col gap-6">
-        <header className="flex justify-between items-center">
-            <h1 className="text-2xl font-semibold text-white">
-            Tasks – {project ? project.shortCall || project.title : "Loading..."}
-            </h1>
-            <div className="flex gap-2">
-            <input
-                type="text"
-                placeholder="Add new task..."
-                value={newTask}
-                onChange={(e) => setNewTask(e.target.value)}
-                className="px-3 py-2 rounded-lg bg-white/10 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <button
-                onClick={handleAddTask}
-                className="flex items-center gap-2 px-3 py-2 bg-blue-500/20 hover:bg-blue-500/40 text-blue-300 rounded-lg transition"
-            >
-                <Plus size={16} /> Add
-            </button>
-            </div>
-        </header>
+  const combinedList = [...pendingTasks, ...serverTasks];
 
-        {loading ? (
-            <div className="flex items-center gap-2 text-gray-400">
-            <Loader2 className="animate-spin" size={18} /> Loading tasks...
-            </div>
-        ) : tasks.length === 0 ? (
-            <div className="text-gray-400">No tasks found</div>
-        ) : (
-            <motion.ul
-            className="flex flex-col gap-3"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.3 }}
-            >
-            {tasks.map((task) => (
-                <motion.li
-                key={task.id}
-                className="p-3 rounded-lg bg-white/5 border border-white/10 text-gray-200"
-                whileHover={{ scale: 1.02 }}
-                transition={{ type: "spring", stiffness: 200 }}
-                >
-                <div className="flex justify-between items-center">
-                    <span>{task.title}</span>
-                    <span className="text-xs text-gray-400 uppercase">{task.status}</span>
-                </div>
-                </motion.li>
-            ))}
-            </motion.ul>
-        )}
+  console.log("Due Date: ", combinedList.createdAt)
+
+  return (
+    <div className="p-6 bg-[#0D132B] rounded-xl shadow-xl border border-white/5 text-white">
+      <header className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-wide">
+            Tasks – {project ? project.shortCall || project.title : projectId}
+          </h1>
+          <p className="text-sm text-white/60">{project?.description}</p>
         </div>
-    );
+
+        <div className="flex gap-2">
+          <Button
+            onClick={() => setCreatingRow((s) => !s)}
+            className="bg-blue-600 hover:bg-blue-700 flex items-center gap-2"
+          >
+            <Plus size={16} /> {creatingRow ? "Close" : "Add Task"}
+          </Button>
+
+          <Button
+            variant="destructive"
+            onClick={handleBatchDelete}
+            disabled={!selected.size}
+            className="flex items-center gap-2"
+          >
+            <Trash2 size={16} /> Delete ({selected.size})
+          </Button>
+        </div>
+      </header>
+
+      <motion.div layout className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="min-w-full text-sm rounded-lg">
+          <thead className="bg-white/5 text-white/70 uppercase tracking-wide">
+            <tr>
+              <th className="px-4 py-2 w-8 text-white/70"><SquareCheckBig size={16}/></th>
+              <th className="px-4 py-2">Task</th>
+              <th className="px-4 py-2">Assignee</th>
+              <th className="px-4 py-2">Due Date</th>
+              <th className="px-4 py-2">Status</th>
+              <th className="px-4 py-2">Link</th>
+              <th className="px-4 py-2">Action</th>
+            </tr>
+          </thead>
+
+          <tbody className="divide-y divide-white/10">
+            {creatingRow && (
+              <AddTaskRow
+                projectMembers={members}
+                onCancel={() => setCreatingRow(false)}
+                onAdd={handleAddOptimistic}
+              />
+            )}
+
+            {loading ? (
+              <tr>
+                <td colSpan={7} className="text-center py-4 text-gray-400">
+                  Loading tasks...
+                </td>
+              </tr>
+            ) : combinedList.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="text-center py-4 text-gray-400">
+                  No tasks found
+                </td>
+              </tr>
+            ) : (
+              combinedList.map((task) => (
+                <motion.tr
+                  key={task.id}
+                  whileHover={{ backgroundColor: "rgba(255,255,255,0.05)" }}
+                  transition={{ duration: 0.2 }}
+                  className="hover:cursor-pointer"
+                >
+                  <td className="px-4 py-2">
+                    <input
+                      type="checkbox"
+                      checked={selected.has(task.id)}
+                      onChange={() => toggleSelect(task.id)}
+                    />
+                  </td>
+                  <td className="px-4 py-2">{task.title}</td>
+                  <td className="px-4 py-2">
+                    {members.find((m) => m.id === task.assignedTo)?.name || "-"}
+                  </td>
+                  <td className="px-4 py-2 text-center">
+                    {task.dueDate ? new Date(task.dueDate.seconds * 1000).toLocaleDateString("id-ID") : "-"}
+                  </td>
+                  <td className="px-4 py-2 capitalize text-center">
+                    <span
+                      className={`px-2 py-1 rounded-full text-xs ${
+                        task.status === "done"
+                          ? "bg-green-700/50 text-green-300"
+                          : task.status === "in_progress"
+                          ? "bg-yellow-700/50 text-yellow-300"
+                          : "bg-blue-700/50 text-blue-300"
+                      }`}
+                    >
+                      {task.status.replace("_", " ")}
+                    </span>
+                  </td>
+                  <td className="px-4 py-2 text-center">
+                    {task.link ? (
+                      <a href={task.link} target="_blank" rel="noreferrer" className="underline text-blue-300">
+                        Open
+                      </a>
+                    ) : (
+                      "-"
+                    )}
+                  </td>
+                  <td className="px-4 py-2 text-center">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => toast.info("Feature coming soon", { description: "Task details view" })}
+                    >
+                      View
+                    </Button>
+                  </td>
+                </motion.tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </motion.div>
+    </div>
+  );
 }
