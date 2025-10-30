@@ -7,6 +7,7 @@ import { motion } from "framer-motion";
 import { Trash2, Plus, SquareCheckBig } from "lucide-react";
 import AddTaskRow from "./AddTaskRow";
 import { toast } from "sonner";
+import EditableTaskRow from "./EditableTaskRow";
 
 export default function TaskPage({ projectId }) {
   const [serverTasks, setServerTasks] = useState([]);
@@ -30,7 +31,6 @@ export default function TaskPage({ projectId }) {
       const results = await Promise.all(ids.map((uid) => getDoc(doc(db, "users", uid))));
       const users = results.filter((r) => r.exists()).map((r) => ({ id: r.id, ...(r.data() || {}) }));
       setMembers(users);
-      console.log(combinedList)
     })();
   }, [projectId]);
 
@@ -90,8 +90,6 @@ export default function TaskPage({ projectId }) {
 
   const combinedList = [...pendingTasks, ...serverTasks];
 
-  console.log("Due Date: ", combinedList.createdAt)
-
   return (
     <div className="p-6 bg-[#0D132B] rounded-xl shadow-xl border border-white/5 text-white">
       <header className="flex items-center justify-between mb-6">
@@ -105,7 +103,7 @@ export default function TaskPage({ projectId }) {
         <div className="flex gap-2">
           <Button
             onClick={() => setCreatingRow((s) => !s)}
-            className="bg-blue-600 hover:bg-blue-700 flex items-center gap-2"
+            className="bg-blue-600 hover:bg-blue-700 flex items-center gap-2 cursor-pointer"
           >
             <Plus size={16} /> {creatingRow ? "Close" : "Add Task"}
           </Button>
@@ -114,7 +112,7 @@ export default function TaskPage({ projectId }) {
             variant="destructive"
             onClick={handleBatchDelete}
             disabled={!selected.size}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 cursor-pointer"
           >
             <Trash2 size={16} /> Delete ({selected.size})
           </Button>
@@ -158,58 +156,14 @@ export default function TaskPage({ projectId }) {
               </tr>
             ) : (
               combinedList.map((task) => (
-                <motion.tr
+                <EditableTaskRow
                   key={task.id}
-                  whileHover={{ backgroundColor: "rgba(255,255,255,0.05)" }}
-                  transition={{ duration: 0.2 }}
-                  className="hover:cursor-pointer"
-                >
-                  <td className="px-4 py-2">
-                    <input
-                      type="checkbox"
-                      checked={selected.has(task.id)}
-                      onChange={() => toggleSelect(task.id)}
-                    />
-                  </td>
-                  <td className="px-4 py-2">{task.title}</td>
-                  <td className="px-4 py-2">
-                    {members.find((m) => m.id === task.assignedTo)?.name || "-"}
-                  </td>
-                  <td className="px-4 py-2 text-center">
-                    {task.dueDate ? new Date(task.dueDate.seconds * 1000).toLocaleDateString("id-ID") : "-"}
-                  </td>
-                  <td className="px-4 py-2 capitalize text-center">
-                    <span
-                      className={`px-2 py-1 rounded-full text-xs ${
-                        task.status === "done"
-                          ? "bg-green-700/50 text-green-300"
-                          : task.status === "in_progress"
-                          ? "bg-yellow-700/50 text-yellow-300"
-                          : "bg-blue-700/50 text-blue-300"
-                      }`}
-                    >
-                      {task.status.replace("_", " ")}
-                    </span>
-                  </td>
-                  <td className="px-4 py-2 text-center">
-                    {task.link ? (
-                      <a href={task.link} target="_blank" rel="noreferrer" className="underline text-blue-300">
-                        Open
-                      </a>
-                    ) : (
-                      "-"
-                    )}
-                  </td>
-                  <td className="px-4 py-2 text-center">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => toast.info("Feature coming soon", { description: "Task details view" })}
-                    >
-                      View
-                    </Button>
-                  </td>
-                </motion.tr>
+                  task={task}
+                  members={members}
+                  projectId={projectId}
+                  toggleSelect={toggleSelect}
+                  selected={selected}
+                />
               ))
             )}
           </tbody>

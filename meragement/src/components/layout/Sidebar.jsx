@@ -63,7 +63,6 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
                     }
                 );
         
-                // cleanup snapshot when auth changes / component unmounts
                 return () => {
                     console.log("Sidebar: unsubscribing from projects snapshot");
                     unsubSnapshot();

@@ -1,0 +1,254 @@
+// src/components/space/tasks/EditableTaskRow.jsx
+import { useState } from "react";
+import { doc, updateDoc } from "firebase/firestore";
+import { db } from "@/lib/firebaseConfig";
+import { Input } from "@/components/ui/input";
+import {
+    Select,
+    SelectTrigger,
+    SelectContent,
+    SelectItem,
+    SelectValue,
+} from "@/components/ui/select";
+import {
+    Popover,
+    PopoverTrigger,
+    PopoverContent,
+} from "@/components/ui/popover";
+import { motion } from "framer-motion";
+import { toast } from "sonner";
+import { Loader2, Users, CalendarDays, Link as LinkIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
+
+export default function EditableTaskRow({
+    task,
+    members,
+    projectId,
+    toggleSelect,
+    selected,
+}) {
+    const [saving, setSaving] = useState(false);
+
+    const updateTask = async (field, value) => {
+        try {
+        setSaving(true);
+        const ref = doc(db, `projects/${projectId}/tasks`, task.id);
+        await updateDoc(ref, { [field]: value, updatedAt: new Date() });
+        toast.success("Task updated!", { description: `${field} updated successfully` });
+        } catch (err) {
+        toast.error("Failed to update", { description: err.message });
+        } finally {
+        setSaving(false);
+        }
+    };
+
+    // 🔹 Multi-assignee toggle
+    const handleAssigneeToggle = async (uid) => {
+        const assigned = task.assignedTo || [];
+        const newValue = assigned.includes(uid)
+        ? assigned.filter((id) => id !== uid)
+        : [...assigned, uid];
+        await updateTask("assignedTo", newValue);
+    };
+
+    const assignedUsers =
+        members.filter((m) => task.assignedTo?.includes(m.id)) || [];
+
+    return (
+        <motion.tr
+        whileHover={{ backgroundColor: "rgba(255,255,255,0.05)" }}
+        transition={{ duration: 0.2 }}
+        >
+        {/* Checkbox */}
+        <td className="px-4 py-2">
+            <input
+            type="checkbox"
+            checked={selected.has(task.id)}
+            onChange={() => toggleSelect(task.id)}
+            />
+        </td>
+
+        {/* 🟦 Title Popover */}
+        <td className="px-4 py-2 text-left">
+            <Popover>
+            <PopoverTrigger asChild>
+                <button className="truncate w-full text-left hover:underline hover:cursor-pointer">
+                {task.title || "Untitled Task"}
+                </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-72 bg-[#1b1f3b] border border-white/10 text-white rounded-lg p-4">
+                <div className="text-sm mb-2 font-medium">Edit Task Title</div>
+                <Input
+                defaultValue={task.title}
+                onBlur={(e) => updateTask("title", e.target.value)}
+                onKeyDown={(e) =>
+                    e.key === "Enter" && updateTask("title", e.target.value)
+                }
+                className="bg-transparent border-white/10 text-white"
+                autoFocus
+                />
+            </PopoverContent>
+            </Popover>
+        </td>
+
+        {/* 🟩 Assignee Popover */}
+        <td className="px-4 py-2 text-center">
+            <Popover>
+            <PopoverTrigger asChild>
+                <button className="flex items-center gap-2 px-2 py-1 bg-white/5 hover:bg-white/10 rounded-md text-sm mx-auto hover:cursor-pointer">
+                    <Users size={14} />
+                    {assignedUsers.length > 0
+                        ? assignedUsers.map((u) => u.name).join(", ")
+                        : "Unassigned"}
+                </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-56 bg-[#1b1f3b] text-white border border-white/10 rounded-lg shadow-md">
+                <div className="p-2 text-sm font-medium border-b border-white/10 mb-2">
+                Select Assignee(s)
+                </div>
+                <div className="flex flex-col gap-1">
+                {members.map((m) => {
+                    const active = task.assignedTo?.includes(m.id);
+                    return (
+                    <button
+                        key={m.id}
+                        onClick={() => handleAssigneeToggle(m.id)}
+                        className={`text-left px-3 py-1 rounded-md transition ${
+                        active
+                            ? "bg-blue-600/70 text-white"
+                            : "hover:bg-white/10 text-white/70"
+                        }`}
+                    >
+                        {m.name || m.email}
+                    </button>
+                    );
+                })}
+                </div>
+            </PopoverContent>
+            </Popover>
+        </td>
+
+        {/* 🟨 Due Date Popover */}
+        <td className="px-4 py-2 text-center">
+            <Popover>
+            <PopoverTrigger asChild>
+                <button className="flex items-center justify-center gap-2 px-2 py-1 hover:bg-white/10 rounded-md text-sm w-full hover:cursor-pointer">
+                <CalendarDays size={14} />
+                {task.dueDate
+                    ? new Date(task.dueDate.seconds * 1000).toLocaleDateString("id-ID")
+                    : "No Date"}
+                </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-60 bg-[#1b1f3b] border border-white/10 rounded-lg p-3 text-white">
+                <div className="text-sm mb-2 font-medium">Set Due Date</div>
+                <Input
+                type="date"
+                defaultValue={
+                    task.dueDate
+                    ? new Date(task.dueDate.seconds * 1000)
+                        .toISOString()
+                        .split("T")[0]
+                    : ""
+                }
+                onChange={(e) => updateTask("dueDate", new Date(e.target.value))}
+                className="bg-transparent border-white/10 text-white"
+                />
+            </PopoverContent>
+            </Popover>
+        </td>
+
+        {/* 🟧 Status Popover */}
+        <td className="px-4 py-2 text-center">
+            <Popover>
+            <PopoverTrigger asChild>
+                <button
+                className={`px-2 py-1 rounded-full text-xs capitalize hover:cursor-pointer hover:scale-110 ${
+                    task.status === "done"
+                    ? "bg-green-700/50 text-green-300"
+                    : task.status === "in_progress"
+                    ? "bg-yellow-700/50 text-yellow-300"
+                    : task.status === "todo"
+                    ? "bg-blue-700/50 text-blue-300"
+                    : "bg-gray-700/50 text-gray-300"
+                }`}
+                >
+                {task.status.replace("_", " ")}
+                </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-44 bg-[#1b1f3b] text-white border border-white/10 rounded-lg shadow-md">
+                <div className="p-2 text-sm font-medium border-b border-white/10 mb-2">
+                Change Status
+                </div>
+                <div className="flex flex-col gap-1">
+                {["draft", "todo", "in_progress", "done"].map((status) => (
+                    <button
+                    key={status}
+                    onClick={() => updateTask("status", status)}
+                    className={`px-3 py-1 rounded-md text-left capitalize transition ${
+                        task.status === status
+                        ? "bg-blue-600/70 text-white"
+                        : "hover:bg-white/10 text-white/70"
+                    }`}
+                    >
+                    {status.replace("_", " ")}
+                    </button>
+                ))}
+                </div>
+            </PopoverContent>
+            </Popover>
+        </td>
+
+        {/* 🟪 Link Popover */}
+        <td className="px-4 py-2 text-center">
+        <Popover>
+            <PopoverTrigger asChild>
+            <button className="flex items-center justify-center gap-2 px-2 py-1 hover:bg-white/10 rounded-md text-sm w-full hover:cursor-pointer">
+                <LinkIcon size={14} />
+                {task.link ? "Open" : "Add link..."}
+            </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-72 bg-[#1b1f3b] border border-white/10 rounded-lg p-4 text-white">
+            <div className="flex items-center justify-between mb-3">
+                <div className="text-sm font-medium">Manage Link</div>
+                {task.link && (
+                <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-xs border-white/20 text-blue-300 hover:text-blue-200 hover:bg-blue-900/30"
+                    onClick={() => window.open(task.link, "_blank")}
+                >
+                    Open
+                </Button>
+                )}
+            </div>
+
+            <Input
+                type="url"
+                defaultValue={task.link || ""}
+                onBlur={(e) => updateTask("link", e.target.value)}
+                onKeyDown={(e) =>
+                e.key === "Enter" && updateTask("link", e.target.value)
+                }
+                className="bg-transparent border-white/10 text-white"
+                placeholder="https://..."
+            />
+            </PopoverContent>
+        </Popover>
+        </td>
+
+        {/* Loader */}
+        <td className="px-4 py-2 text-center text-sm">
+            {saving ? 
+                <Loader2 size={16} className="animate-spin mx-auto text-gray-400" /> 
+                : 
+                <Button
+                    variant={"destructive"}
+                    className="hover:underline"
+                >
+                    Detail
+                </Button>
+            }
+        </td>
+        </motion.tr>
+    );
+}
