@@ -110,10 +110,10 @@ import {
       <motion.aside
         animate={{ width: isOpen ? 256 : 80 }}
         transition={{ duration: 0.4, ease: "easeInOut" }}
-        className="h-screen bg-gradient-to-b from-white/10 to-white/5 
+        className="h-auto bg-gradient-to-b from-white/10 to-white/5 
           backdrop-blur-2xl border-r border-white/10 
           shadow-[0_0_20px_rgba(255,255,255,0.05)] 
-          relative flex flex-col p-4 overflow-y-auto"
+          relative flex flex-col p-4 overflow-h-auto"
       >
         {/* Collapse button */}
         <button

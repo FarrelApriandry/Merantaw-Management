@@ -11,7 +11,7 @@ export default function AddTaskRow({ projectMembers = [], projectCategories = []
   const [title, setTitle] = useState("")
   const [assignedTo, setAssignedTo] = useState(projectMembers?.[0]?.id || "")
   const [dueDate, setDueDate] = useState("")
-  const [status, setStatus] = useState("todo")
+  const [status, setStatus] = useState("draft")
   const [categories, setCategories] = useState([])
   const [loading, setLoading] = useState(false)
 
@@ -21,6 +21,11 @@ export default function AddTaskRow({ projectMembers = [], projectCategories = []
     if (!dueDate) return "Due date wajib diisi"
     return null
   }
+
+//   const parsedDate = new Date(dueDate)
+// if (isNaN(parsedDate.getTime())) {
+//   return toast.error("Tanggal tidak valid")
+// }
 
   const handleSave = async () => {
     const v = validate()
@@ -38,12 +43,12 @@ export default function AddTaskRow({ projectMembers = [], projectCategories = []
 
     try {
       await onAdd(payload)
-      toast.success("Task berhasil ditambahkan!", { description: title })
-      setTitle("")
-      setAssignedTo(projectMembers?.[0]?.id || "")
-      setDueDate("")
-      setStatus("todo")
-      setCategories([])
+        toast.success("Task berhasil ditambahkan!", { description: title })
+        setTitle("")
+        setAssignedTo(projectMembers?.[0]?.id || "")
+        setDueDate("")
+        setStatus("draft")
+        setCategories([])
     } catch (err) {
       toast.error("Gagal menambahkan task", { description: err.message })
     } finally {

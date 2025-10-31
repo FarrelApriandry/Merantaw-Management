@@ -26,14 +26,14 @@ export default function EditableTaskRow({
 
     const updateTask = async (field, value) => {
         try {
-        setSaving(true);
-        const ref = doc(db, `projects/${projectId}/tasks`, task.id);
-        await updateDoc(ref, { [field]: value, updatedAt: new Date() });
-        toast.success("Task updated!", { description: `${field} updated successfully` });
+            setSaving(true);
+            const ref = doc(db, `projects/${projectId}/tasks`, task.id);
+            await updateDoc(ref, { [field]: value, updatedAt: new Date() });
+            toast.success("Task updated!", { description: `${field} updated successfully` });
         } catch (err) {
-        toast.error("Failed to update", { description: err.message });
+            toast.error("Failed to update", { description: err.message });
         } finally {
-        setSaving(false);
+            setSaving(false);
         }
     };
 
@@ -150,23 +150,34 @@ export default function EditableTaskRow({
                 <button className="flex items-center justify-center gap-2 px-2 py-1 hover:bg-white/10 rounded-md text-sm w-full hover:cursor-pointer">
                 <CalendarDays size={14} />
                 {task.dueDate
-                    ? new Date(task.dueDate.seconds * 1000).toLocaleDateString("id-ID")
+                    ? new Date(
+                        task.dueDate?.seconds
+                            ? task.dueDate.seconds * 1000
+                            : task.dueDate
+                        ).toLocaleDateString("id-ID")
                     : "No Date"}
                 </button>
             </PopoverTrigger>
             <PopoverContent className="w-60 bg-[#1b1f3b] border border-white/10 rounded-lg p-3 text-white">
                 <div className="text-sm mb-2 font-medium">Set Due Date</div>
                 <Input
-                type="date"
-                defaultValue={
+                    type="date"
+                    defaultValue={
                     task.dueDate
-                    ? new Date(task.dueDate.seconds * 1000)
-                        .toISOString()
-                        .split("T")[0]
-                    : ""
-                }
-                onChange={(e) => updateTask("dueDate", new Date(e.target.value))}
-                className="bg-transparent border-white/10 text-white"
+                        ? new Date(
+                            task.dueDate?.seconds
+                            ? task.dueDate.seconds * 1000
+                            : task.dueDate
+                        )
+                            .toISOString()
+                            .split("T")[0]
+                        : ""
+                    }
+                    onChange={(e) => {
+                    const newDate = new Date(e.target.value)
+                    if (!isNaN(newDate.getTime())) updateTask("dueDate", newDate)
+                    }}
+                    className="bg-transparent border-white/10 text-white"
                 />
             </PopoverContent>
             </Popover>

@@ -72,9 +72,9 @@ export default function CategoryInput({ value = [], onChange, suggestions = [] }
       </div>
 
       {filtered.length > 0 && (
-        <Command className="absolute z-10 mt-1 w-full bg-[#1b1f3b] border border-white/10 rounded-lg text-white shadow-lg">
+        <Command className="absolute z-10 mt-1 w-full h-full bg-[#1b1f3b] border border-white/10 rounded-lg text-white shadow-lg">
           <CommandList>
-            {filtered.slice(0, 6).map((item) => (
+            {filtered.map((item) => (
               <CommandItem
                 key={item}
                 onSelect={() => addCategory(item)}
