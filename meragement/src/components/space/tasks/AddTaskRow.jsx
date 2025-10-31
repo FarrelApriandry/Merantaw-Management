@@ -1,59 +1,55 @@
-// src/components/space/tasks/AddTaskRow.jsx
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
-import { X, Check } from "lucide-react";
-import { motion } from "framer-motion";
-import { toast } from "sonner";
+import { useState } from "react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select"
+import { X, Check } from "lucide-react"
+import { motion } from "framer-motion"
+import { toast } from "sonner"
+import CategoryInput from "./CategoryInput"
 
-export default function AddTaskRow({ projectMembers = [], onCancel, onAdd }) {
-  const [title, setTitle] = useState("");
-  const [assignedTo, setAssignedTo] = useState(projectMembers?.[0]?.id || "");
-  const [dueDate, setDueDate] = useState("");
-  const [status, setStatus] = useState("todo");
-  const [loading, setLoading] = useState(false);
-  const [errorMsg, setErrorMsg] = useState(null);
+export default function AddTaskRow({ projectMembers = [], projectCategories = [], onCancel, onAdd }) {
+  const [title, setTitle] = useState("")
+  const [assignedTo, setAssignedTo] = useState(projectMembers?.[0]?.id || "")
+  const [dueDate, setDueDate] = useState("")
+  const [status, setStatus] = useState("todo")
+  const [categories, setCategories] = useState([])
+  const [loading, setLoading] = useState(false)
 
   const validate = () => {
-    if (!title.trim()) return "Title wajib diisi";
-    if (!assignedTo) return "Assignee wajib dipilih";
-    if (!dueDate) return "Due date wajib diisi";
-    if (!status) return "Status wajib dipilih";
-    return null;
-  };
+    if (!title.trim()) return "Title wajib diisi"
+    if (!assignedTo) return "Assignee wajib dipilih"
+    if (!dueDate) return "Due date wajib diisi"
+    return null
+  }
 
   const handleSave = async () => {
-    const v = validate();
-    if (v) {
-      setErrorMsg(v);
-      toast.warning(v);
-      return;
-    }
-    setErrorMsg(null);
-    setLoading(true);
+    const v = validate()
+    if (v) return toast.warning(v)
+
+    setLoading(true)
     const payload = {
       title: title.trim(),
       assignedTo,
       dueDate: new Date(dueDate),
       status,
       link: "",
-    };
-    try {
-      await onAdd(payload);
-      toast.success("Task berhasil ditambahkan!", { description: title });
-      setTitle("");
-      setAssignedTo(projectMembers?.[0]?.id || "");
-      setDueDate("");
-      setStatus("todo");
-    } catch (err) {
-      console.error("AddTaskRow: onAdd failed", err);
-      toast.error("Gagal menambahkan task", { description: err.message });
-      setErrorMsg(err?.message || "Gagal menambahkan task");
-    } finally {
-      setLoading(false);
+      category: categories,
     }
-  };
+
+    try {
+      await onAdd(payload)
+      toast.success("Task berhasil ditambahkan!", { description: title })
+      setTitle("")
+      setAssignedTo(projectMembers?.[0]?.id || "")
+      setDueDate("")
+      setStatus("todo")
+      setCategories([])
+    } catch (err) {
+      toast.error("Gagal menambahkan task", { description: err.message })
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
     <motion.tr
@@ -61,19 +57,22 @@ export default function AddTaskRow({ projectMembers = [], onCancel, onAdd }) {
       animate={{ opacity: 1, y: 0 }}
       className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg"
     >
-      <td className="px-3 py-2"></td>
-
-      {/* Task Title */}
+      <td className="px-3 py-2" />
       <td className="px-3 py-2">
         <Input
           placeholder="Task title..."
-          className="bg-transparent border-white/10 focus-visible:ring-blue-500 text-white"
+          className="bg-transparent border-white/10 text-white"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
         />
       </td>
-
-      {/* Assignee */}
+      <td className="px-3 py-2">
+        <CategoryInput
+          value={categories}
+          onChange={setCategories}
+          suggestions={projectCategories}
+        />
+      </td>
       <td className="px-3 py-2">
         <Select value={assignedTo} onValueChange={setAssignedTo}>
           <SelectTrigger className="bg-transparent border-white/10 text-white">
@@ -88,18 +87,14 @@ export default function AddTaskRow({ projectMembers = [], onCancel, onAdd }) {
           </SelectContent>
         </Select>
       </td>
-
-      {/* Due Date */}
       <td className="px-3 py-2">
         <Input
           type="date"
-          className="bg-transparent border-white/10 focus-visible:ring-blue-500 text-white"
+          className="bg-transparent border-white/10 text-white"
           value={dueDate}
           onChange={(e) => setDueDate(e.target.value)}
         />
       </td>
-
-      {/* Status */}
       <td className="px-3 py-2">
         <Select value={status} onValueChange={setStatus}>
           <SelectTrigger className="bg-transparent border-white/10 text-white">
@@ -113,21 +108,15 @@ export default function AddTaskRow({ projectMembers = [], onCancel, onAdd }) {
           </SelectContent>
         </Select>
       </td>
-
-      {/* Link Column Placeholder */}
       <td className="px-3 py-2 text-sm text-white/50 italic">auto-fill later</td>
-
-      {/* Actions */}
       <td className="px-3 py-2 flex gap-2">
         <Button
           size="sm"
-          variant="default"
           className="bg-blue-600 hover:bg-blue-700 flex items-center gap-2"
           onClick={handleSave}
           disabled={loading}
         >
-          <Check size={14} />
-          Save
+          <Check size={14} /> Save
         </Button>
         <Button
           size="sm"
@@ -136,10 +125,9 @@ export default function AddTaskRow({ projectMembers = [], onCancel, onAdd }) {
           onClick={onCancel}
           disabled={loading}
         >
-          <X size={14} />
-          Cancel
+          <X size={14} /> Cancel
         </Button>
       </td>
     </motion.tr>
-  );
+  )
 }

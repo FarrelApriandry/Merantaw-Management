@@ -3,13 +3,7 @@ import { useState } from "react";
 import { doc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebaseConfig";
 import { Input } from "@/components/ui/input";
-import {
-    Select,
-    SelectTrigger,
-    SelectContent,
-    SelectItem,
-    SelectValue,
-} from "@/components/ui/select";
+import CategoryInput from "./CategoryInput"
 import {
     Popover,
     PopoverTrigger,
@@ -17,13 +11,14 @@ import {
 } from "@/components/ui/popover";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
-import { Loader2, Users, CalendarDays, Link as LinkIcon } from "lucide-react";
+import { Loader2, Users, CalendarDays, Link as LinkIcon, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function EditableTaskRow({
     task,
     members,
     projectId,
+    projectCategories = [],
     toggleSelect,
     selected,
 }) {
@@ -88,6 +83,26 @@ export default function EditableTaskRow({
                 autoFocus
                 />
             </PopoverContent>
+            </Popover>
+        </td>
+
+        {/* 🟦 Category Popover */}
+        <td className="px-4 py-2 text-center">
+            <Popover>
+                <PopoverTrigger asChild>
+                <button className="flex items-center gap-2 px-2 py-1 bg-white/5 hover:bg-white/10 rounded-md text-sm mx-auto hover:cursor-pointer">
+                    <Tag size={14} />
+                    {task.category?.length ? task.category.join(", ") : "No Category"}
+                </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-72 bg-[#1b1f3b] border border-white/10 rounded-lg p-4 text-white">
+                <div className="text-sm mb-2 font-medium">Edit Categories</div>
+                <CategoryInput
+                    value={task.category || []}
+                    onChange={(newCats) => updateTask("category", newCats)}
+                    suggestions={projectCategories || []}
+                />
+                </PopoverContent>
             </Popover>
         </td>
 
