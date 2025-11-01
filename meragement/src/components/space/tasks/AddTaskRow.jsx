@@ -113,11 +113,11 @@ export default function AddTaskRow({ projectMembers = [], projectCategories = []
           </SelectContent>
         </Select>
       </td>
-      <td className="px-3 py-2 text-sm text-white/50 italic">auto-fill later</td>
-      <td className="px-3 py-2 flex gap-2">
+      <td className="px-3 py-2 text-sm text-white/50 italic text-center">-null-</td>
+      <td className="px-3 py-2 flex items-center justify-center gap-2">
         <Button
           size="sm"
-          className="bg-blue-600 hover:bg-blue-700 flex items-center gap-2"
+          className="bg-blue-600 hover:bg-blue-700 flex items-center"
           onClick={handleSave}
           disabled={loading}
         >
@@ -125,8 +125,7 @@ export default function AddTaskRow({ projectMembers = [], projectCategories = []
         </Button>
         <Button
           size="sm"
-          variant="ghost"
-          className="text-gray-300 hover:text-white"
+          className="bg-red-600 hover:bg-red-700 flex items-center"
           onClick={onCancel}
           disabled={loading}
         >
