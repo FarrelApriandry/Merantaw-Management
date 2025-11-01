@@ -121,7 +121,7 @@ export default function AddTaskRow({ projectMembers = [], projectCategories = []
           onClick={handleSave}
           disabled={loading}
         >
-          <Check size={14} /> Save
+          <Check size={14} />
         </Button>
         <Button
           size="sm"
@@ -130,7 +130,7 @@ export default function AddTaskRow({ projectMembers = [], projectCategories = []
           onClick={onCancel}
           disabled={loading}
         >
-          <X size={14} /> Cancel
+          <X size={14} />
         </Button>
       </td>
     </motion.tr>
