@@ -48,6 +48,7 @@ export default function CategoryInput({ value = [], onChange, suggestions = [] }
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.8, opacity: 0 }}
             >
+            {/* Category Create | Delete */}
               <Badge
                 variant="secondary"
                 className="bg-blue-500/20 text-blue-300 hover:bg-blue-600/30 flex items-center gap-1"

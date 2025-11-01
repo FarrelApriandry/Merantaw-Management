@@ -16,6 +16,13 @@ import { Trash2, Plus, SquareCheckBig } from "lucide-react";
 import AddTaskRow from "./AddTaskRow";
 import { toast } from "sonner";
 import EditableTaskRow from "./EditableTaskRow";
+import { 
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
 
 export default function TaskPage({ projectId }) {
   const [serverTasks, setServerTasks] = useState([]);
@@ -26,6 +33,7 @@ export default function TaskPage({ projectId }) {
   const [loading, setLoading] = useState(true);
   const [creatingRow, setCreatingRow] = useState(false);
   const [selected, setSelected] = useState(new Set());
+  const [filterCategory, setFilterCategory] = useState(null);
 
   // 🔹 Fetch project & members
   useEffect(() => {
@@ -124,6 +132,10 @@ export default function TaskPage({ projectId }) {
 
   const combinedList = [...pendingTasks, ...serverTasks];
 
+  const filteredTasks = filterCategory
+  ? combinedList.filter((t) => t.category?.includes(filterCategory))
+  : combinedList;
+
   // 🔹 Render UI
   return (
     <div className="p-6 bg-[#0D132B] rounded-xl shadow-xl border border-white/5 text-white">
@@ -135,6 +147,40 @@ export default function TaskPage({ projectId }) {
           <p className="text-sm text-white/60">{project?.description}</p>
         </div>
 
+        {/* Filter Bar */}
+        <div className="flex items-center gap-3 mb-4">
+          <div className="text-sm text-white/70">Filter by Category:</div>
+          
+          <div className="w-60">
+            <Select
+              value={filterCategory || ""}
+              onValueChange={(val) => setFilterCategory(val === "all" ? null : val)}
+            >
+              <SelectTrigger className="bg-transparent border-white/10 text-white">
+                <SelectValue placeholder="All Categories" />
+              </SelectTrigger>
+              <SelectContent className="bg-[#1b1f3b] text-white border border-white/10">
+                <SelectItem value="all">All</SelectItem>
+                {projectCategories.map((cat) => (
+                  <SelectItem key={cat} value={cat}>
+                    {cat}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {filterCategory && (
+            <button
+              onClick={() => setFilterCategory(null)}
+              className="text-xs text-blue-300 hover:underline"
+            >
+              Clear Filter
+            </button>
+          )}
+        </div>
+        
+        {/* Create | Delete Task */}
         <div className="flex gap-2">
           <Button
             onClick={() => setCreatingRow((s) => !s)}
@@ -172,43 +218,43 @@ export default function TaskPage({ projectId }) {
           </thead>
 
           <tbody className="divide-y divide-white/10">
-            {/* 🟢 Add Task Bar */}
-            {creatingRow && (
-              <AddTaskRow
-                projectMembers={members}
-                projectCategories={projectCategories}
-                onCancel={() => setCreatingRow(false)}
-                onAdd={handleAddOptimistic}
-              />
-            )}
+          {/* 🟢 Add Task Bar */}
+          {creatingRow && (
+            <AddTaskRow
+              projectMembers={members}
+              projectCategories={projectCategories}
+              onCancel={() => setCreatingRow(false)}
+              onAdd={handleAddOptimistic}
+            />
+          )}
 
-            {/* 🔄 Loading / Empty / Data */}
-            {loading ? (
-              <tr>
-                <td colSpan={8} className="text-center py-4 text-gray-400">
-                  Loading tasks...
-                </td>
-              </tr>
-            ) : combinedList.length === 0 ? (
-              <tr>
-                <td colSpan={8} className="text-center py-4 text-gray-400">
-                  No tasks found
-                </td>
-              </tr>
-            ) : (
-              combinedList.map((task) => (
-                <EditableTaskRow
-                  key={task.id}
-                  task={task}
-                  members={members}
-                  projectId={projectId}
-                  projectCategories={projectCategories}
-                  toggleSelect={toggleSelect}
-                  selected={selected}
-                />
-              ))
-            )}
-          </tbody>
+          {/* 🔄 Loading / Empty / Data */}
+          {loading ? (
+            <tr>
+              <td colSpan={8} className="text-center py-4 text-gray-400">
+                Loading tasks...
+              </td>
+            </tr>
+          ) : filteredTasks.length === 0 ? (
+            <tr>
+              <td colSpan={8} className="text-center py-4 text-gray-400">
+                No tasks found {filterCategory ? `in “${filterCategory}”` : ""}
+              </td>
+            </tr>
+          ) : (
+            filteredTasks.map((task) => (
+              <EditableTaskRow
+                key={task.id}
+                task={task}
+                members={members}
+                projectId={projectId}
+                projectCategories={projectCategories}
+                toggleSelect={toggleSelect}
+                selected={selected}
+              />
+            ))
+          )}
+        </tbody>
         </table>
       </motion.div>
     </div>
