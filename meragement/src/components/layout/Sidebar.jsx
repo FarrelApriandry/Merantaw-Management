@@ -1,4 +1,4 @@
-import {
+  import {
     Home, Inbox, Users, FileText, Calendar, Target,
     MessageCircle, Folder, ChevronDown, ChevronLeft, Earth,
   } from "lucide-react";
@@ -18,7 +18,7 @@ import {
     const [currentPath, setCurrentPath] = useState("");
     const [loadingSpaces, setLoadingSpaces] = useState(true);
     const [spacesError, setSpacesError] = useState(null);
-  
+
     // ✅ Step 1: render only after client mount
     useEffect(() => {
       setIsClient(true);
@@ -68,6 +68,7 @@ import {
                   title: data?.title || "(no title)",
                 };
               });
+
               setSpaces(projectList);
               setSpacesError(null);
               setLoadingSpaces(false);
@@ -84,7 +85,7 @@ import {
           setSpaces([]);
           setSpacesError(err);
           setLoadingSpaces(false);
-        }
+        } 
       });
   
       return () => {
@@ -199,9 +200,24 @@ import {
                       transition={{ duration: 0.3 }}
                       className="ml-6 mt-2 flex flex-col gap-1"
                     >
-                      <NavItem label="Dashboard Project" href={`/dashboard/space/${space.id}`} isOpen={isOpen} currentPath={currentPath} />
-                      <NavItem label="Task" href={`/dashboard/space/${space.id}/tasks`} isOpen={isOpen} currentPath={currentPath} />
-                      <NavItem label="Discussion" href={`/dashboard/space/${space.id}/discussion`} isOpen={isOpen} currentPath={currentPath} />
+                      <NavItem 
+                        label="Dashboard"
+                        href={`/dashboard/space/${space.id}`}
+                        isOpen={isOpen}
+                        currentPath={currentPath} 
+                      />
+                      <NavItem 
+                        label="Task"
+                        href={`/dashboard/space/${space.id}/tasks`}
+                        isOpen={isOpen}
+                        currentPath={currentPath} 
+                      />
+                      <NavItem 
+                        label="Discussion" 
+                        href={`/dashboard/space/${space.id}/discussion`}
+                        isOpen={isOpen} 
+                        currentPath={currentPath} 
+                      />
                     </motion.div>
                   )}
                 </AnimatePresence>
