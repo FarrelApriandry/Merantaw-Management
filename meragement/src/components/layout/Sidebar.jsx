@@ -128,7 +128,7 @@
         {/* Logo */}
         <div className="flex items-center gap-3 mb-8 mt-2 justify-center">
           <motion.img
-            src="/LogoMTW.svg"
+            src="/favicon.ico"
             alt="Logo"
             className="w-9 h-9 drop-shadow-lg"
             whileHover={{ rotate: 10, scale: 1.05 }}
@@ -143,7 +143,7 @@
                 transition={{ duration: 0.2 }}
                 className="text-lg font-bold tracking-wide bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent"
               >
-                Merangement
+                Meragement
               </motion.h1>
             )}
           </AnimatePresence>
