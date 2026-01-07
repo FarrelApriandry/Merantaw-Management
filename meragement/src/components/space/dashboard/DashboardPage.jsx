@@ -70,7 +70,7 @@ export default function DashboardPage({ projectId }) {
     const done = tasks.filter((t) => t.status === "done").length;
     const overdue = tasks.filter(
       (t) =>
-        t.dueDate?.seconds * 1000 < now && t.status !== "complete"
+        t.dueDate?.seconds * 1000 < now && t.status !== "done"
     ).length;
 
     return { total, todo, ongoing, done, overdue };
@@ -90,7 +90,7 @@ export default function DashboardPage({ projectId }) {
     return tasks
       .filter(
         (t) =>
-          t.dueDate?.seconds * 1000 < now && t.status !== "complete"
+          t.dueDate?.seconds * 1000 < now && t.status !== "done"
       )
       .slice(0, 5);
   }, [tasks, now]);
