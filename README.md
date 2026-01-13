@@ -1,101 +1,122 @@
-# Meragement
+# 🚀 Meragement - [Rel Interesting Project](https://github.com/FarrelApriandry)
 
-Meragement adalah aplikasi manajemen proyek yang dibangun untuk membantu tim mengelola tugas, proyek, dan kolaborasi secara efisien. Dibangun dengan Astro, React, dan Firebase.
+**Meragement** is a high-performance project management powerhouse designed to help teams streamline tasks, projects, and collaboration with zero friction. Built with a modern, cutting-edge stack for speed, scalability, and a top-tier user experience.
 
-## ✨ Fitur Utama
+<!--[Explore the Code](#tech-stack) • [Getting Started](https://www.google.com/search?q=%23-getting-started) • [Key Features](https://www.google.com/search?q=%23-key-features) -->
 
-* **Autentikasi Pengguna**: Login aman menggunakan Firebase Authentication.
-* **Dashboard**: Tampilan ringkasan statistik proyek, anggota aktif, dan tugas.
-* **Manajemen Proyek**: Menambah dan mengelola proyek, termasuk deskripsi, prioritas, dan tim yang ditugaskan.
-* **Manajemen Tim**: Membuat tim, menambahkan anggota, dan menentukan peran.
-* **Manajemen Pengguna**: Menambah pengguna baru dengan peran tertentu (Admin/Member).
-* **Navigasi Sidebar**: Sidebar dinamis dan dapat diciutkan untuk navigasi mudah antar modul seperti Home, Inbox, Teams, Forms, Calendar, Milestone, Discussion, dan Spaces proyek.
-* **Spaces Proyek**: Organisasi proyek berdasarkan kategori (NPB, AR, MOLE, DND) dengan sub-menu Dashboard Project, Task, dan Discussion.
-* **UI Modern**: Antarmuka pengguna yang menarik dan responsif menggunakan Tailwind CSS, Shadcn UI, dan Framer Motion.
-* **Notifikasi Toast**: Umpan balik instan untuk aksi pengguna menggunakan Sonner.
-* **Perlindungan Rute**: Rute dashboard dilindungi dan memerlukan login. Rute Form hanya dapat diakses oleh admin.
+---
 
-## 💻 Tumpukan Teknologi
+## ✨ Key Features
 
-* **Framework**: [Astro](https://astro.build/)
-* **UI Library**: [React](https://react.dev/) (dengan integrasi Astro)
-* **Backend & Database**: [Firebase](https://firebase.google.com/) (Authentication, Firestore)
-* **Styling**: [Tailwind CSS](https://tailwindcss.com/)
-* **Komponen UI**: [Shadcn UI](https://ui.shadcn.com/)
-* **Animasi**: [Framer Motion](https://www.framer.com/motion/)
-* **Notifikasi**: [Sonner](https://sonner.emilkowal.ski/)
-* **Ikon**: [Lucide React](https://lucide.dev/)
+* **🔐 Robust Authentication**: Secure user access powered by **Firebase Authentication** (Email/Password).
+* **📊 Insightful Dashboard**: A high-level overview of project stats, active members, and pending tasks at a glance.
+* **📂 Project Powerhouse**: Effortlessly create and manage projects with priority levels, detailed descriptions, and team assignments.
+* **👥 Team Orchestration**: Build your dream team, assign members, and define roles (Admin/Member) with ease.
+* **⚡ Sleek Navigation**: A dynamic, collapsible sidebar for seamless transitions between Home, Inbox, Teams, Milestones, and more.
+* **🌌 Project Spaces**: Stay organized with dedicated spaces. featuring specialized Dashboards, Task boards, and Discussion hubs.
+* **🎨 Modern UX/UI**: A stunning, responsive interface crafted with **Tailwind CSS**, **Shadcn UI**, and fluid animations via **Framer Motion**.
+* **🔔 Instant Feedback**: Real-time user feedback using **Sonner** toast notifications.
+* **🛡️ Route Protection**: Secure architecture where dashboard access is restricted to authenticated users, and sensitive forms are Admin-only.
 
-## 🚀 Memulai
+---
 
-1.  **Clone repositori:**
-    ```bash
-    git clone [https://github.com/farrelapriandry/merantaw-management.git](https://github.com/farrelapriandry/merantaw-management.git)
-    cd merantaw-management/meragement
-    ```
+## 💻 Tech Stack
 
-2.  **Instal dependensi:**
-    ```bash
-    npm install
-    # atau
-    yarn install
-    # atau
-    pnpm install
-    ```
-    *Perintah ini terdapat pada README.md bawaan Astro.*
+| Technology | Purpose |
+| --- | --- |
+| **[Astro](https://astro.build/)** | Modern Web Framework (Island Architecture) |
+| **[React](https://react.dev/)** | Dynamic UI Components |
+| **[Firebase](https://firebase.google.com/)** | Auth & Firestore NoSQL Database |
+| **[Tailwind CSS](https://tailwindcss.com/)** | Utility-First Styling |
+| **[Shadcn UI](https://ui.shadcn.com/)** | Reusable Component System |
+| **[Framer Motion](https://www.framer.com/motion/)** | Smooth UI Animations |
+| **[Lucide React](https://lucide.dev/)** | Beautifully Simple Icons |
 
-3.  **Konfigurasi Firebase:**
-    * Buat proyek Firebase di [https://console.firebase.google.com/](https://console.firebase.google.com/).
-    * Aktifkan **Authentication** (Metode Email/Password).
-    * Aktifkan **Firestore Database**.
-    * Buat file `.env` di direktori `meragement/` dan salin variabel dari `src/lib/firebaseConfig.js`, lalu isi dengan kredensial Firebase Anda:
-        ```env
-        PUBLIC_FIREBASE_API_KEY=xxx
-        PUBLIC_FIREBASE_AUTH_DOMAIN=xxx
-        PUBLIC_FIREBASE_PROJECT_ID=xxx
-        PUBLIC_FIREBASE_STORAGE_BUCKET=xxx
-        PUBLIC_FIREBASE_MESSAGING_SENDER_ID=xxx
-        PUBLIC_FIREBASE_APP_ID=xxx
-        PUBLIC_FIREBASE_MEASUREMENT_ID=xxx
-        ```
-    * Pastikan file `.env` ada dalam `.gitignore` Anda.
+---
 
-4.  **Jalankan server pengembangan:**
-    ```bash
-    npm run dev
-    ```
-    *Server akan berjalan di `http://localhost:4321`.*
+## 🚀 Getting Started
 
-5.  **Buka aplikasi:**
-    Buka `http://localhost:4321` di browser Anda. Anda akan diarahkan ke halaman login.
+Follow these steps:
 
-## 🛠️ Perintah Lainnya
+### 1. Clone the Repository
 
-* **Build**: `npm run build` (Membangun situs produksi ke `./dist/`)
-* **Preview**: `npm run preview` (Pratinjau build produksi secara lokal)
-* **Astro CLI**: `npm run astro -- --help` (Bantuan untuk perintah Astro CLI)
+```bash
+git clone https://github.com/farrelapriandry/merantaw-management.git
+cd merantaw-management/meragement
 
-## 📁 Struktur Proyek (Ringkasan)
-meragement/ 
-├── public/ # Aset statis (misal: LogoMTW.svg) 
-├── src/ 
-│ ├── components/ # Komponen React (.jsx, .tsx) 
-│ │ ├── auth/ # Komponen terkait autentikasi (LoginForm, AuthProtector, dll.) 
-│ │ ├── dashboard/ # Komponen spesifik dashboard (StatCard, ProjectCard, TaskCard) 
-│ │ ├── forms/ # Komponen form (AddUserForm, AddTeamForm, AddProjectForm) 
-│ │ ├── layout/ # Komponen tata letak (Sidebar, Navbar, DashboardContent, dll.) 
-│ │ └── ui/ # Komponen UI (Button, Card, Input, Select, dll.) - Shadcn UI 
-│ ├── layouts/ # Tata letak Astro (.astro) (DashboardLayout, AuthLayout) 
-│ ├── lib/ # Utilitas dan konfigurasi 
-│ │ ├── api/ # Fungsi API Firestore (users, teams, projects) 
-│ │ ├── firebaseConfig.js # Konfigurasi Firebase 
-│ │ └── utils.ts # Fungsi utilitas (misal: cn) 
-│ ├── pages/ # Halaman/Rute Astro (.astro) 
-│ │ ├── auth/ # Halaman autentikasi (login.astro) 
-│ │ ├── dashboard/ # Halaman dashboard (index.astro, forms.astro) 
-│ │ └── index.astro # Halaman utama (redirect ke login) 
-│ └── styles/ # Styling global (global.css) 
-├── astro.config.mjs # Konfigurasi Astro 
-├── package.json # Dependensi dan skrip proyek 
-├── tailwind.config.mjs # (Implied) Konfigurasi Tailwind CSS 
-└── tsconfig.json # Konfigurasi TypeScript
+```
+
+### 2. Install Dependencies
+
+```bash
+npm install
+# or
+pnpm install
+# or
+yarn install
+
+```
+
+### 3. Firebase Configuration
+
+1. Create a project in the [Firebase Console](https://console.firebase.google.com/).
+2. Enable **Authentication** (Email/Password) and **Firestore Database**.
+3. Create a `.env` file in the root directory and populate it with your credentials:
+
+```env
+PUBLIC_FIREBASE_API_KEY=your_api_key
+PUBLIC_FIREBASE_AUTH_DOMAIN=your_auth_domain
+PUBLIC_FIREBASE_PROJECT_ID=your_project_id
+PUBLIC_FIREBASE_STORAGE_BUCKET=your_storage_bucket
+PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+PUBLIC_FIREBASE_APP_ID=your_app_id
+PUBLIC_FIREBASE_MEASUREMENT_ID=your_measurement_id
+
+```
+
+> **Note:** Keep your secrets safe. Ensure `.env` is listed in your `.gitignore`.
+
+### 4. Run Development Server
+
+```bash
+npm run dev
+
+```
+
+Your app will be live at `http://localhost:4321`.
+
+---
+
+## 🛠️ Scripts
+
+* `npm run build` — Production-ready build in `./dist/`.
+* `npm run preview` — Locally preview the production build.
+* `npm run astro -- --help` — Get help with the Astro CLI.
+
+---
+
+## 📁 Project Structure
+
+```text
+meragement/
+├── public/          # Static assets (Logos, Icons)
+├── src/
+│   ├── components/  # React Components (.jsx, .tsx)
+│   │   ├── auth/    # Login & Auth Guards
+│   │   ├── dashboard/# Cards & Statistics
+│   │   ├── forms/   # Add User/Team/Project forms
+│   │   ├── layout/  # Sidebar, Navbar, Content Wrappers
+│   │   └── ui/      # Shadcn UI primitives
+│   ├── layouts/     # Astro Layouts (Dashboard, Auth)
+│   ├── lib/         # Logic & Config
+│   │   ├── api/     # Firestore CRUD functions
+│   │   └── firebaseConfig.js
+│   ├── pages/       # File-based Routing
+│   └── styles/      # Global CSS & Tailwind imports
+└── astro.config.mjs # Astro Configuration
+
+```
+
+---
+
+Developed by [Rel](https://github.com/farrelapriandry)
