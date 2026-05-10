@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { doc, getDoc, collection, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebaseConfig";
+import { onListsSnapshot } from "@/lib/firestore";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -40,22 +41,39 @@ export default function DashboardPage({ projectId }) {
   }, [projectId]);
 
   /* =========================
-      FETCH TASKS (REALTIME)
+      FETCH TASKS (REALTIME - across all lists)
   ========================== */
   useEffect(() => {
     if (!projectId) return;
+    let listUnsubs = [];
 
-    const colRef = collection(db, `projects/${projectId}/tasks`);
-    const unsub = onSnapshot(colRef, (snap) => {
-      const list = snap.docs.map((d) => ({
-        id: d.id,
-        ...(d.data() || {}),
-      }));
-      setTasks(list);
-      setLoading(false);
+    const unsubLists = onListsSnapshot(projectId, (lists) => {
+      // Clean up previous task listeners
+      listUnsubs.forEach((u) => u());
+      listUnsubs = [];
+
+      if (lists.length === 0) {
+        setTasks([]);
+        setLoading(false);
+        return;
+      }
+
+      const tasksByList = {};
+      lists.forEach((list) => {
+        const colRef = collection(db, `projects/${projectId}/lists/${list.id}/tasks`);
+        const unsub = onSnapshot(colRef, (snap) => {
+          tasksByList[list.id] = snap.docs.map((d) => ({ id: d.id, ...(d.data() || {}) }));
+          setTasks(Object.values(tasksByList).flat());
+          setLoading(false);
+        });
+        listUnsubs.push(unsub);
+      });
     });
 
-    return () => unsub();
+    return () => {
+      unsubLists();
+      listUnsubs.forEach((u) => u());
+    };
   }, [projectId]);
 
   /* =========================

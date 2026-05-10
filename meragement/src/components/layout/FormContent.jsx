@@ -1,8 +1,8 @@
 // src/components/forms/FormContent.jsx
 import { useState } from "react";
-import AddUserForm from "../forms/AddUserForm";
-import AddTeamForm from "../forms/AddTeamForm";
-import AddProjectForm from "../forms/AddProjectForm";
+import AddUserForm from "@/components/forms/AddUserForm";
+import AddTeamForm from "@/components/forms/AddTeamForm";
+import AddProjectForm from "@/components/forms/AddProjectForm";
 import { Button } from "@/components/ui/button";
 
 export default function FormContent() {
