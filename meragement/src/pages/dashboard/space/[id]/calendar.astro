@@ -1,0 +1,11 @@
+---
+export const prerender = false;
+
+import CalendarPage from "@/components/space/calendar/CalendarPage.jsx";
+import DashboardLayout from "@/layouts/DashboardLayout.astro";
+
+const { id } = Astro.params;
+---
+<DashboardLayout title={`Calendar ${id ? `- Space ${id}` : ""}`}>
+    <CalendarPage projectId={id} client:load />
+</DashboardLayout>
