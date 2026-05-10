@@ -135,3 +135,102 @@ export function onDocsSnapshot(projectId, callback) {
     callback(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
   });
 }
+
+
+// ─── Discussions CRUD ────────────────────────────────────────
+export const discussionsCol = (projectId) =>
+  collection(db, `projects/${projectId}/discussions`);
+
+export const repliesCol = (projectId, discussionId) =>
+  collection(db, `projects/${projectId}/discussions/${discussionId}/replies`);
+
+export async function createDiscussion(projectId, data) {
+  return await addDoc(discussionsCol(projectId), {
+    ...data,
+    status: "open",
+    solutionId: null,
+    replyCount: 0,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export function onDiscussionsSnapshot(projectId, callback) {
+  const q = query(discussionsCol(projectId), orderBy("createdAt", "desc"));
+  return onSnapshot(q, (snap) => {
+    callback(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+  });
+}
+
+export async function createReply(projectId, discussionId, data) {
+  const replyRef = await addDoc(repliesCol(projectId, discussionId), {
+    ...data,
+    isSolution: false,
+    createdAt: serverTimestamp(),
+  });
+  // Increment reply count
+  const discRef = doc(db, `projects/${projectId}/discussions`, discussionId);
+  const snap = await getDoc(discRef);
+  if (snap.exists()) {
+    await updateDoc(discRef, { replyCount: (snap.data().replyCount || 0) + 1, updatedAt: serverTimestamp() });
+  }
+  return replyRef;
+}
+
+export function onRepliesSnapshot(projectId, discussionId, callback) {
+  const q = query(repliesCol(projectId, discussionId), orderBy("createdAt", "asc"));
+  return onSnapshot(q, (snap) => {
+    callback(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+  });
+}
+
+export async function markAsSolution(projectId, discussionId, replyId) {
+  const batch = writeBatch(db);
+  const discRef = doc(db, `projects/${projectId}/discussions`, discussionId);
+
+  // Get current discussion to check for existing solution
+  const discSnap = await getDoc(discRef);
+  const prevSolutionId = discSnap.data()?.solutionId;
+
+  // Reset previous solution if exists
+  if (prevSolutionId) {
+    const prevRef = doc(db, `projects/${projectId}/discussions/${discussionId}/replies`, prevSolutionId);
+    batch.update(prevRef, { isSolution: false });
+  }
+
+  // Mark new reply as solution
+  const replyRef = doc(db, `projects/${projectId}/discussions/${discussionId}/replies`, replyId);
+  batch.update(replyRef, { isSolution: true });
+
+  // Update discussion status
+  batch.update(discRef, { status: "solved", solutionId: replyId, updatedAt: serverTimestamp() });
+
+  await batch.commit();
+}
+
+
+// ─── Events CRUD ─────────────────────────────────────────────
+export const eventsCol = (projectId) =>
+  collection(db, `projects/${projectId}/events`);
+
+export async function createEvent(projectId, data) {
+  return await addDoc(eventsCol(projectId), {
+    ...data,
+    createdAt: serverTimestamp(),
+  });
+}
+
+export async function updateEvent(projectId, eventId, data) {
+  const ref = doc(db, `projects/${projectId}/events`, eventId);
+  await updateDoc(ref, { ...data });
+}
+
+export async function deleteEvent(projectId, eventId) {
+  await deleteDoc(doc(db, `projects/${projectId}/events`, eventId));
+}
+
+export function onEventsSnapshot(projectId, callback) {
+  return onSnapshot(eventsCol(projectId), (snap) => {
+    callback(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+  });
+}

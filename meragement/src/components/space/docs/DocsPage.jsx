@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { onDocsSnapshot, createDoc, deleteDocument } from "@/lib/firestore";
 import DocEditor from "./DocEditor";
+import { getTemplate } from "./templates";
 import {
   Dialog,
   DialogContent,
@@ -51,15 +52,16 @@ export default function DocsPage({ projectId }) {
 
   const handleCreate = async () => {
     if (!newTitle.trim()) return;
+    const content = getTemplate(newCategory, newTitle.trim());
     const ref = await createDoc(projectId, {
       title: newTitle.trim(),
-      content: `# ${newTitle.trim()}\n\nStart writing here...`,
+      content,
       category: newCategory,
       updatedBy: "",
     });
     setNewTitle("");
     setCreateOpen(false);
-    setActiveDoc({ id: ref.id, title: newTitle.trim(), content: `# ${newTitle.trim()}\n\nStart writing here...`, category: newCategory });
+    setActiveDoc({ id: ref.id, title: newTitle.trim(), content, category: newCategory });
   };
 
   const handleDelete = async (docId) => {
