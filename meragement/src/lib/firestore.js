@@ -94,3 +94,44 @@ export async function batchDeleteTasks(projectId, listId, taskIds) {
   taskIds.forEach((id) => batch.delete(taskDoc(projectId, listId, id)));
   await batch.commit();
 }
+
+
+// ─── Docs CRUD ───────────────────────────────────────────────
+export const docsCol = (projectId) =>
+  collection(db, `projects/${projectId}/docs`);
+
+export async function getProjectDocs(projectId) {
+  const q = query(docsCol(projectId), orderBy("updatedAt", "desc"));
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
+export async function getDocById(projectId, docId) {
+  const ref = doc(db, `projects/${projectId}/docs`, docId);
+  const snap = await getDoc(ref);
+  return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+}
+
+export async function createDoc(projectId, data) {
+  return await addDoc(docsCol(projectId), {
+    ...data,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function updateDocContent(projectId, docId, data) {
+  const ref = doc(db, `projects/${projectId}/docs`, docId);
+  await updateDoc(ref, { ...data, updatedAt: serverTimestamp() });
+}
+
+export async function deleteDocument(projectId, docId) {
+  await deleteDoc(doc(db, `projects/${projectId}/docs`, docId));
+}
+
+export function onDocsSnapshot(projectId, callback) {
+  const q = query(docsCol(projectId), orderBy("updatedAt", "desc"));
+  return onSnapshot(q, (snap) => {
+    callback(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+  });
+}

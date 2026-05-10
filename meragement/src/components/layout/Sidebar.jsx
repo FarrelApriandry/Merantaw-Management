@@ -1,7 +1,7 @@
 import {
   Home, Inbox, Users, FileText, Calendar, Target,
   MessageCircle, Folder, ChevronDown, ChevronLeft, Earth,
-  List, Plus,
+  List, Plus, BookOpen,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -205,6 +205,13 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
                     <NavItem
                       label="Discussion"
                       href={`/dashboard/space/${space.id}/discussion`}
+                      isOpen={isOpen}
+                      currentPath={currentPath}
+                    />
+                    <NavItem
+                      icon={<BookOpen size={14} />}
+                      label="Docs"
+                      href={`/dashboard/space/${space.id}/docs`}
                       isOpen={isOpen}
                       currentPath={currentPath}
                     />
