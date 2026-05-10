@@ -7,5 +7,5 @@ import DashboardLayout from "@/layouts/DashboardLayout.astro";
 const { id } = Astro.params;
 ---
 <DashboardLayout title={`Calendar ${id ? `- Space ${id}` : ""}`}>
-    <CalendarPage projectId={id} client:load />
+    <CalendarPage projectId={id} client:only="react" />
 </DashboardLayout>
