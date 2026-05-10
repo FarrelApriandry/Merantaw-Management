@@ -215,7 +215,6 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
                       currentPath={currentPath}
                     />
                     <NavItem
-                      icon={<CalendarDays size={14} />}
                       label="Calendar"
                       href={`/dashboard/space/${space.id}/calendar`}
                       isOpen={isOpen}
