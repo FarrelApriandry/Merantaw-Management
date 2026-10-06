@@ -1,0 +1,149 @@
+import { useState } from "react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select"
+import { X, Check } from "lucide-react"
+import { motion } from "framer-motion"
+import { toast } from "sonner"
+import CategoryInput from "./CategoryInput"
+import type { AppUser, Task } from "@/lib/types"
+
+export interface AddTaskRowProps {
+  projectMembers?: AppUser[];
+  projectCategories?: string[];
+  onCancel: () => void;
+  onAdd: (payload: Partial<Task> & Record<string, unknown>) => void | Promise<void>;
+}
+
+export default function AddTaskRow({ projectMembers = [], projectCategories = [], onCancel, onAdd }: AddTaskRowProps) {
+  const [title, setTitle] = useState<string>("")
+  const [assignedTo, setAssignedTo] = useState<string>(projectMembers?.[0]?.id || "")
+  const [dueDate, setDueDate] = useState<string>("")
+  const [status, setStatus] = useState<string>("draft")
+  const [categories, setCategories] = useState<string[]>([])
+  const [loading, setLoading] = useState<boolean>(false)
+
+  const validate = (): string | null => {
+    if (!title.trim()) return "Title wajib diisi"
+    if (!assignedTo) return "Assignee wajib dipilih"
+    if (!dueDate) return "Due date wajib diisi"
+    return null
+  }
+
+//   const parsedDate = new Date(dueDate)
+// if (isNaN(parsedDate.getTime())) {
+//   return toast.error("Tanggal tidak valid")
+// }
+
+  const handleSave = async (): Promise<void> => {
+    const v = validate()
+    if (v) {
+      toast.warning(v);
+      return;
+    }
+
+    setLoading(true)
+    const payload = {
+      title: title.trim(),
+      assignedTo,
+      dueDate: new Date(dueDate),
+      status,
+      link: "",
+      category: categories,
+    }
+
+    try {
+      await onAdd(payload)
+        toast.success("Task berhasil ditambahkan!", { description: title })
+        setTitle("")
+        setAssignedTo(projectMembers?.[0]?.id || "")
+        setDueDate("")
+        setStatus("draft")
+        setCategories([])
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Unknown error";
+      toast.error("Gagal menambahkan task", { description: msg })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <motion.tr
+      initial={{ opacity: 0, y: -6 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg"
+    >
+      <td className="px-3 py-2" />
+      <td className="px-3 py-2">
+        <Input
+          placeholder="Task title..."
+          className="bg-transparent border-white/10 text-white"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+        />
+      </td>
+      <td className="px-3 py-2">
+        <CategoryInput
+          value={categories}
+          onChange={setCategories}
+          suggestions={projectCategories}
+        />
+      </td>
+      <td className="px-3 py-2">
+        <Select value={assignedTo} onValueChange={setAssignedTo}>
+          <SelectTrigger className="bg-transparent border-white/10 text-white">
+            <SelectValue placeholder="Select assignee" />
+          </SelectTrigger>
+          <SelectContent className="bg-[#1b1f3b] text-white border-white/10">
+            {projectMembers.map((m) => (
+              <SelectItem key={m.id} value={m.id}>
+                {m.name || m.email}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </td>
+      <td className="px-3 py-2">
+        <Input
+          type="date"
+          className="bg-transparent border-white/10 text-white"
+          value={dueDate}
+          onChange={(e) => setDueDate(e.target.value)}
+        />
+      </td>
+      <td className="px-3 py-2">
+        <Select value={status} onValueChange={setStatus}>
+          <SelectTrigger className="bg-transparent border-white/10 text-white">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent className="bg-[#1b1f3b] text-white border-white/10">
+            <SelectItem value="draft">Draft</SelectItem>
+            <SelectItem value="todo">To Do</SelectItem>
+            <SelectItem value="in_progress">In Progress</SelectItem>
+            <SelectItem value="done">Done</SelectItem>
+          </SelectContent>
+        </Select>
+      </td>
+      <td className="px-3 py-2 text-sm text-white/50 italic text-center">-null-</td>
+      <td className="px-3 py-2 flex items-center justify-center gap-2">
+        <Button
+          size="sm"
+          className="bg-blue-600 hover:bg-blue-700 flex items-center"
+          onClick={handleSave}
+          disabled={loading}
+        >
+          <Check size={14} />
+        </Button>
+        <Button
+          size="sm"
+          className="bg-red-600 hover:bg-red-700 flex items-center"
+          onClick={onCancel}
+          disabled={loading}
+        >
+          <X size={14} />
+        </Button>
+      </td>
+    </motion.tr>
+  )
+}
