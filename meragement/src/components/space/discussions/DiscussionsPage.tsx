@@ -1,4 +1,6 @@
 // src/components/space/discussions/DiscussionsPage.tsx — P0: pakai verified user, bukan localStorage.
+import { toast } from "sonner";
+
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, MessageCircle, CheckCircle2 } from "lucide-react";
@@ -43,15 +45,19 @@ export default function DiscussionsPage({ projectId }: DiscussionsPageProps) {
 
   const handleCreate = async (): Promise<void> => {
     if (!newTitle.trim() || !newContent.trim()) return;
-    await createDiscussion(projectId, {
-      title: newTitle.trim(),
-      content: newContent.trim(),
-      authorId: currentUser?.uid || "",
-      authorName: currentUser?.name || currentUser?.email || "Anonymous",
-    });
-    setNewTitle("");
-    setNewContent("");
-    setCreateOpen(false);
+    try {
+      await createDiscussion(projectId, {
+        title: newTitle.trim(),
+        content: newContent.trim(),
+        authorId: currentUser?.uid || "",
+        authorName: currentUser?.name || currentUser?.email || "Anonymous",
+      });
+      setNewTitle("");
+      setNewContent("");
+      setCreateOpen(false);
+    } catch {
+      toast.error("Failed to create discussion");
+    }
   };
 
   if (activeThread) {

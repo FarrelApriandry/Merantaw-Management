@@ -205,21 +205,29 @@ export default function CalendarPage({ projectId }: CalendarPageProps) {
 
   const handleCreateEvent = async (): Promise<void> => {
     if (!newTitle.trim() || !newSlot) return;
-    await createEvent(projectId, {
-      title: newTitle.trim(),
-      start: newSlot.start,
-      end: newSlot.end,
-      color: "#8b5cf6",
-    });
-    setCreateOpen(false);
-    toast.success("Event created");
+    try {
+      await createEvent(projectId, {
+        title: newTitle.trim(),
+        start: newSlot.start,
+        end: newSlot.end,
+        color: "#8b5cf6",
+      });
+      setCreateOpen(false);
+      toast.success("Event created");
+    } catch {
+      toast.error("Failed to create event");
+    }
   };
 
   const handleDeleteEvent = async (): Promise<void> => {
     if (!selectedEvent || selectedEvent.type !== "event") return;
-    await deleteEvent(projectId, selectedEvent.id);
-    setSelectedEvent(null);
-    toast.success("Event deleted");
+    try {
+      await deleteEvent(projectId, selectedEvent.id);
+      setSelectedEvent(null);
+      toast.success("Event deleted");
+    } catch {
+      toast.error("Failed to delete event");
+    }
   };
 
   // Custom event wrapper with drop animation

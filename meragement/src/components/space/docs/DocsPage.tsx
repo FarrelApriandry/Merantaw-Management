@@ -1,3 +1,5 @@
+import { toast } from "sonner";
+
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, FileText, Trash2, Search } from "lucide-react";
@@ -58,22 +60,30 @@ export default function DocsPage({ projectId }: DocsPageProps) {
 
   const handleCreate = async (): Promise<void> => {
     if (!newTitle.trim()) return;
-    const content = getTemplate(newCategory, newTitle.trim());
-    const ref = await createDoc(projectId, {
-      title: newTitle.trim(),
-      content,
-      category: newCategory,
-      updatedBy: "",
-    });
-    setNewTitle("");
-    setCreateOpen(false);
-    setActiveDoc({ id: ref.id, title: newTitle.trim(), content, category: newCategory });
+    try {
+      const content = getTemplate(newCategory, newTitle.trim());
+      const ref = await createDoc(projectId, {
+        title: newTitle.trim(),
+        content,
+        category: newCategory,
+        updatedBy: "",
+      });
+      setNewTitle("");
+      setCreateOpen(false);
+      setActiveDoc({ id: ref.id, title: newTitle.trim(), content, category: newCategory });
+    } catch {
+      toast.error("Failed to create document");
+    }
   };
 
   const handleDelete = async (docId: string): Promise<void> => {
     if (!confirm(`Delete this document?`)) return;
-    await deleteDocument(projectId, docId);
-    if (activeDoc?.id === docId) setActiveDoc(null);
+    try {
+      await deleteDocument(projectId, docId);
+      if (activeDoc?.id === docId) setActiveDoc(null);
+    } catch {
+      toast.error("Failed to delete document");
+    }
   };
 
   if (activeDoc) {

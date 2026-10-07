@@ -32,8 +32,12 @@ export default function DashboardPage({ projectId }: DashboardPageProps) {
   useEffect(() => {
     if (!projectId) return;
     (async () => {
-      const snap = await getDoc(doc(db, "projects", projectId));
-      if (snap.exists()) setProject({ id: snap.id, ...(snap.data() as object) } as Project);
+      try {
+        const snap = await getDoc(doc(db, "projects", projectId));
+        if (snap.exists()) setProject({ id: snap.id, ...(snap.data() as object) } as Project);
+      } catch {
+        // read-only fetch, silence
+      }
     })();
   }, [projectId]);
 

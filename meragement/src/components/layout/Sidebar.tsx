@@ -4,6 +4,8 @@ import {
   List, Plus, BookOpen, CalendarDays,
 } from "lucide-react";
 import { useState, useEffect, type ReactNode } from "react";
+import { toast } from "sonner";
+
 import { motion, AnimatePresence } from "framer-motion";
 import { collection, query, where, onSnapshot, type Unsubscribe } from "firebase/firestore";
 import { db } from "@/lib/firebaseConfig";
@@ -118,8 +120,13 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
     data: Pick<SpaceList, "name" | "color" | "icon">
   ): Promise<void> => {
     if (!projectId) return;
-    const existing = spaceLists[projectId] || [];
-    await createList(projectId, { ...data, order: existing.length });
+    try {
+      const existing = spaceLists[projectId] || [];
+      await createList(projectId, { ...data, order: existing.length });
+      setCreateListFor(null);
+    } catch {
+      toast.error("Failed to create list");
+    }
   };
 
   if (!isClient) {
