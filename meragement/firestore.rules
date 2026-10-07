@@ -6,15 +6,12 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function userDoc() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
-    }
-
     function isAdmin() {
       return isSignedIn() && (
-        (request.auth.token.keys().hasAny(['admin', 'role']) &&
-          (request.auth.token.admin == true || request.auth.token.role == 'admin')) ||
-        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && userDoc().role == 'admin')
+        request.auth.token.admin == true ||
+        request.auth.token.role == 'admin' ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
       );
     }
 
@@ -23,12 +20,23 @@ service cloud.firestore {
     }
 
     function isMember(pid) {
-      return isSignedIn() && exists(/databases/$(database)/documents/projects/$(pid)) &&
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/projects/$(pid)) &&
         request.auth.uid in projectData(pid).get('assignedUsers', []);
     }
 
     function canReadProject(pid) {
       return isAdmin() || isMember(pid);
+    }
+
+    function discussionData(pid, discId) {
+      return get(/databases/$(database)/documents/projects/$(pid)/discussions/$(discId)).data;
+    }
+
+    function isDiscussionAuthor(pid, discId) {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/projects/$(pid)/discussions/$(discId)) &&
+        discussionData(pid, discId).authorId == request.auth.uid;
     }
 
     function validLink() {
@@ -71,20 +79,23 @@ service cloud.firestore {
       match /discussions/{discId} {
         allow read: if canReadProject(pid);
         allow create: if isAdmin() || isMember(pid);
-        allow update: if isAdmin() || isMember(pid);
+        // Member boleh edit title/content miliknya, tapi status/solutionId hanya author/admin.
+        allow update: if isAdmin() || isDiscussionAuthor(pid, discId) ||
+          (isMember(pid) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['status', 'solutionId']));
         allow delete: if isAdmin();
 
         match /replies/{replyId} {
           allow read: if canReadProject(pid);
           allow create: if isAdmin() || isMember(pid);
-          allow update: if isAdmin() || isMember(pid);
+          allow update: if isAdmin() || isMember(pid) || isDiscussionAuthor(pid, discId);
           allow delete: if isAdmin() || isMember(pid);
         }
       }
     }
 
     match /users/{uid} {
-      allow read: if isSignedIn();
+      allow get: if isSignedIn();
+      allow list: if isAdmin();
       // Users may update own non-privileged fields; role escalation blocked below.
       allow create: if isAdmin();
       allow update: if isAdmin() ||
@@ -93,10 +104,11 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // Public directory (non-sensitive). No email enumeration: read requires auth.
+    // Public directory (non-sensitive: name/role only, NO email). Read requires auth.
     match /users_public/{id} {
       allow read: if isSignedIn();
-      allow write: if false;
+      allow create, update: if isAdmin();
+      allow delete: if isAdmin();
     }
 
     match /teams/{teamId} {

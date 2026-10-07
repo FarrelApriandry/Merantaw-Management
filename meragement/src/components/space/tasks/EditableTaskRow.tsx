@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { updateTask } from "@/lib/firestore";
+import { safeUrl, openSafeUrl } from "@/lib/safeUrl";
 import { Input } from "@/components/ui/input";
 import CategoryInput from "./CategoryInput";
 import {
@@ -38,6 +39,13 @@ export default function EditableTaskRow({
   const handleUpdate = async (field: string, value: unknown): Promise<void> => {
     try {
       setSaving(true);
+      // P0: validasi link — tolak javascript:/data:/blob: dsb, hanya http/https
+      if (field === "link") {
+        if (typeof value === "string" && value.trim() !== "" && !safeUrl(value)) {
+          toast.error("Link tidak valid", { description: "Gunakan URL http(s)://..." });
+          return;
+        }
+      }
       await updateTask(projectId, listId, task.id, { [field]: value });
       toast.success("Task updated!", { description: `${field} updated` });
     } catch (err) {
@@ -230,7 +238,11 @@ export default function EditableTaskRow({
                   variant="outline"
                   size="sm"
                   className="text-xs border-white/20 text-blue-300 hover:text-blue-200 hover:bg-blue-900/30"
-                  onClick={() => window.open(task.link, "_blank")}
+                  onClick={() => {
+                    if (!openSafeUrl(task.link)) {
+                      toast.error("Link tidak valid atau tidak aman");
+                    }
+                  }}
                 >
                   Open
                 </Button>

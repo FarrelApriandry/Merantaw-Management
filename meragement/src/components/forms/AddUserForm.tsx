@@ -72,7 +72,6 @@ export default function AddUserForm(): JSX.Element {
 
         await setDoc(doc(db, "users_public", user.uid), {
             name: formData.name,
-            email: formData.email,
             role: formData.role,
             createdAt: serverTimestamp()
         });

@@ -2,11 +2,11 @@
 import { toast } from "sonner";
 import { useEffect, useState, type FormEvent, type JSX } from "react";
 import { motion } from "framer-motion";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import { signInWithEmailAndPassword, onAuthStateChanged } from "firebase/auth";
 import { auth, db } from "@/lib/firebaseConfig";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { collection, query, where, getDocs } from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
 import type { StoredUser } from "@/lib/types";
 
 export default function LoginForm(): JSX.Element {
@@ -31,35 +31,41 @@ export default function LoginForm(): JSX.Element {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // 🔹 Ambil data user dari Firestore (users_public)
-      const q = query(collection(db, "users_public"), where("email", "==", email));
-      const querySnapshot = await getDocs(q);
+      // 🔹 P0: baca users/{uid} — bukan query users_public by email (bocor + bisa dipalsu)
+      const snap = await getDoc(doc(db, "users", user.uid));
 
-      if (!querySnapshot.empty) {
-        const userDoc = querySnapshot.docs[0];
-        const userData = { id: userDoc.id, ...(userDoc.data() as Partial<StoredUser>) };
-        
-        toast.success("Login berhasil!", {
-          description: `Selamat datang, ${userData.name || "user"}!`,
-        });
-
-        // 🔹 Simpan ke localStorage untuk auth protector
-        localStorage.setItem(
-          "userData",
-          JSON.stringify({
-            uid: user.uid,
-            email: user.email,
-            role: userData.role || "user",
-            status: userData.status || "active",
-            name: userData.name || "User",
-          })
-        );
-
-        // 🔹 Redirect ke dashboard
-        setTimeout(() => (window.location.href = "/dashboard/"), 1500);
-      } else {
+      if (!snap.exists()) {
+        await auth.signOut().catch(() => undefined);
+        try { localStorage.removeItem("userData"); } catch { /* ignore */ }
         toast.warning("Akun belum terdaftar di sistem!");
+        return;
       }
+      const userData = snap.data() as Partial<StoredUser> & { name?: string; role?: string; status?: string; isActive?: boolean };
+      if (userData.isActive === false) {
+        await auth.signOut().catch(() => undefined);
+        try { localStorage.removeItem("userData"); } catch { /* ignore */ }
+        toast.error("Akun dinonaktifkan", { description: "Hubungi admin." });
+        return;
+      }
+
+      toast.success("Login berhasil!", {
+        description: `Selamat datang, ${userData.name || "user"}!`,
+      });
+
+      // 🔹 Cache display saja — otorisasi tetap via AuthProtector + rules
+      localStorage.setItem(
+        "userData",
+        JSON.stringify({
+          uid: user.uid,
+          email: user.email,
+          role: userData.role || "member",
+          status: userData.status || "active",
+          name: userData.name || "User",
+        })
+      );
+
+      // 🔹 Redirect ke dashboard
+      setTimeout(() => (window.location.href = "/dashboard/"), 1500);
     } catch (err) {
       console.error(err);
       const msg = err instanceof Error ? err.message : "Periksa kembali email dan password Anda.";
@@ -72,15 +78,13 @@ export default function LoginForm(): JSX.Element {
   };
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-        const userData = localStorage.getItem("userData");
-        if (userData) {
-            const parsedData = JSON.parse(userData) as Partial<StoredUser>;
-            if (parsedData && parsedData.email) {
+    // P0: jangan percaya localStorage — cek sesi Firebase Auth
+    const unsub = onAuthStateChanged(auth, (fbUser) => {
+        if (fbUser) {
                 // Delay untuk toast
                 const toastDelay = setTimeout(() => {
-                    toast.success("Anda sudah login!", {
-                        description: `Selamat datang kembali, ${parsedData.name || "user"}!`,
+                    toast.success("Anda sudah login! (session)", {
+                        description: `Selamat datang kembali!`,
                     });
                 }, 1000); // Delay 1 detik untuk toast
 
@@ -89,15 +93,12 @@ export default function LoginForm(): JSX.Element {
                     window.location.href = "/dashboard/";
                 }, 2500); // Delay 2.5 detik untuk redirect
 
-                // Cleanup function
-                return () => {
-                    clearTimeout(toastDelay);
-                    clearTimeout(redirectDelay);
-                };
-            }
-        }
-    }
-}, []);
+        void toastDelay;
+        void redirectDelay;
+      }
+    });
+    return () => unsub();
+  }, []);
 
   return (
     <motion.div

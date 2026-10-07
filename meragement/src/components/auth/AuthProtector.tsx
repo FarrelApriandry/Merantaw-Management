@@ -1,87 +1,84 @@
-// src/components/auth/AuthProtector.tsx
+// src/components/auth/AuthProtector.tsx — P0: jangan percaya localStorage saja.
+// Sumber kebenaran = Firebase Auth session + dokumen users/{uid} di Firestore.
 import { useEffect, useState, type ReactNode } from "react";
-import type { StoredUser } from "@/lib/types";
-
-/**
- * AuthProtector
- * - Memeriksa `localStorage.userData` untuk menentukan apakah user terautentikasi.
- * - Jika tidak ada/invalid -> redirect ke /login
- * - Jika ada -> render children
- */
+import { onAuthStateChanged } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
+import { auth, db } from "@/lib/firebaseConfig";
 
 export default function AuthProtector({ children }: { children: ReactNode }) {
-    const [authorized, setAuthorized] = useState<boolean>(false);
-    const [checking, setChecking] = useState<boolean>(true);
+  const [authorized, setAuthorized] = useState<boolean>(false);
+  const [checking, setChecking] = useState<boolean>(true);
 
-    const checkAuth = (): boolean => {
-        try {
-        const raw = localStorage.getItem("userData");
-        if (!raw) return false;
-
-        const parsed = JSON.parse(raw) as Partial<StoredUser>;
-        // minimal fields yang kita butuhkan
-        if (!parsed.email) return false;
-        if (!parsed.role) return false;
-
-        // optional: cek isActive flag jika ada
-        if (parsed.isActive === false) return false;
-
-        // lulus pengecekan
-        console.log("User data:", localStorage.getItem("userData"))
-        return true;
-        } catch {
-        return false;
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, async (fbUser) => {
+      try {
+        if (!fbUser) {
+          try {
+            localStorage.removeItem("userData");
+          } catch {
+            /* ignore */
+          }
+          window.location.href = "/auth/login";
+          return;
         }
+
+        // Verifikasi dokumen user — cegah localStorage palsu role=admin
+        const snap = await getDoc(doc(db, "users", fbUser.uid));
+        if (!snap.exists()) {
+          try {
+            localStorage.removeItem("userData");
+          } catch {
+            /* ignore */
+          }
+          await auth.signOut().catch(() => undefined);
+          window.location.href = "/auth/login";
+          return;
+        }
+        const data = snap.data() as { isActive?: boolean; role?: string };
+        if (data.isActive === false) {
+          try {
+            localStorage.removeItem("userData");
+          } catch {
+            /* ignore */
+          }
+          await auth.signOut().catch(() => undefined);
+          window.location.href = "/auth/login";
+          return;
+        }
+
+        setAuthorized(true);
+        setChecking(false);
+      } catch {
+        try {
+          localStorage.removeItem("userData");
+        } catch {
+          /* ignore */
+        }
+        window.location.href = "/auth/login";
+      }
+    });
+
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === "userData" && !e.newValue) {
+        window.location.href = "/auth/login";
+      }
     };
+    window.addEventListener("storage", onStorage);
+    return () => {
+      unsub();
+      window.removeEventListener("storage", onStorage);
+    };
+  }, []);
 
-    useEffect(() => {
-        const runCheck = () => {
-            setChecking(true);
-            const ok = checkAuth();
-            if (!ok) {
-                // cleanup dan redirect
-                try { localStorage.removeItem("userData"); } catch {}
-                window.location.href = "/auth/login";
-                return;
-            }
-            setAuthorized(true);
-            setChecking(false);
-        };
+  if (checking) {
+    return (
+      <div className="flex items-center justify-center min-h-screen text-white">
+        <div>Checking authentication...</div>
+      </div>
+    );
+  }
 
-        runCheck();
-
-        // listen for navigation events (back/forward/pushState/hashchange)
-        const onPop = () => runCheck();
-        const onHash = () => runCheck();
-
-        window.addEventListener("popstate", onPop);
-        window.addEventListener("hashchange", onHash);
-
-        // also listen storage changes (another tab logs out)
-        const onStorage = (e: StorageEvent) => {
-            if (e.key === "userData") runCheck();
-        };
-        window.addEventListener("storage", onStorage);
-
-        return () => {
-        window.removeEventListener("popstate", onPop);
-        window.removeEventListener("hashchange", onHash);
-        window.removeEventListener("storage", onStorage);
-        };
-    }, []);
-
-    if (checking) {
-        return (
-        <div className="flex items-center justify-center min-h-screen text-white">
-            <div>Checking authentication...</div>
-        </div>
-        );
-    }
-
-    if (!authorized) {
-        // In practice we redirect earlier; this is fallback
-        return null;
-    }
-
-    return <>{children}</>;
+  if (!authorized) return null;
+  return <>{children}</>;
 }
+

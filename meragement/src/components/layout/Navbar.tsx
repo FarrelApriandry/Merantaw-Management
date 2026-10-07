@@ -1,7 +1,9 @@
+// src/components/layout/Navbar.tsx — P0: display via useCurrentUser (verified), logout via Firebase Auth.
 import { useState, useEffect, useRef, type ReactNode } from "react";
 import { Grip, Bell, UserRound, ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import type { StoredUser } from "@/lib/types";
+import { auth } from "@/lib/firebaseConfig";
+import { useCurrentUser } from "@/lib/hooks/useCurrentUser";
 
 export interface NavbarProps {
   toggleSidebar?: () => void;
@@ -10,20 +12,8 @@ export interface NavbarProps {
 
 export default function Navbar({ toggleSidebar, Header }: NavbarProps) {
     const [openUserCard, setOpenUserCard] = useState<boolean>(false);
-    const [userData, setUserData] = useState<StoredUser | null>(null);
+    const userData = useCurrentUser();
     const cardRef = useRef<HTMLDivElement | null>(null);
-
-    // Ambil userData dari localStorage
-    useEffect(() => {
-        const storedUser = localStorage.getItem("userData");
-        if (storedUser) {
-          try {
-            setUserData(JSON.parse(storedUser) as StoredUser);
-          } catch {
-            setUserData(null);
-          }
-        }
-    }, []);
 
     // Tutup card kalau klik di luar
     useEffect(() => {
@@ -40,8 +30,9 @@ export default function Navbar({ toggleSidebar, Header }: NavbarProps) {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-    const handleLogout = () => {
-        localStorage.removeItem("userData");
+    const handleLogout = async () => {
+        try { localStorage.removeItem("userData"); } catch { /* ignore */ }
+        try { await auth.signOut(); } catch { /* ignore */ }
         window.location.href = "/auth/login";
     };
 

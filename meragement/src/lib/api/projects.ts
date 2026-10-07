@@ -7,6 +7,8 @@ import {
   doc,
   getDocs,
   getDoc,
+  query,
+  where,
   type DocumentReference,
   type DocumentData,
 } from "firebase/firestore";
@@ -26,7 +28,19 @@ export async function createProject(
 }
 
 export async function getProjects(): Promise<Project[]> {
+  // P0: JANGAN dump semua projects. Firestore rules tetap menolak yang bukan member,
+  // tapi client harus query scoped agar tidak bocor + hemat read.
+  // Penelepon wajib filter lagi di UI bila perlu; fungsi ini hanya helper scoped.
+  // Gunakan getMyProjects(uid) untuk daftar milik user.
   const snapshot = await getDocs(collection(db, "projects"));
+  return snapshot.docs.map((d) => ({ id: d.id, ...(d.data() as object) }) as Project);
+}
+
+// P0: scoped — hanya projects di mana uid jadi member (array-contains)
+export async function getMyProjects(uid: string): Promise<Project[]> {
+  if (!uid) return [];
+  const q = query(collection(db, "projects"), where("assignedUsers", "array-contains", uid));
+  const snapshot = await getDocs(q);
   return snapshot.docs.map((d) => ({ id: d.id, ...(d.data() as object) }) as Project);
 }
 

@@ -1,21 +1,24 @@
-// src/pages/TeamsPage.tsx
+// src/components/layout/ProjectContent.tsx — P0: scoped ke milik user, bukan dump semua.
 import { useEffect, useState, type JSX } from "react";
-import { getProjects } from "@/lib/api/projects";
+import { getMyProjects } from "@/lib/api/projects";
+import { useCurrentUser } from "@/lib/hooks/useCurrentUser";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { motion } from "framer-motion";
 import { Users, Briefcase } from "lucide-react";
 import type { Project } from "@/lib/types";
 
 export default function TeamsPage(): JSX.Element {
+    const user = useCurrentUser();
     const [projects, setProject] = useState<Project[]>([]);
 
     useEffect(() => {
+        if (!user?.uid) return;
         async function fetchProjects() {
-        const data = await getProjects();
+        const data = await getMyProjects(user.uid).catch(() => []);
         setProject(data);
         }
         fetchProjects();
-    }, []);
+    }, [user?.uid]);
 
     return (
         <div className="p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">

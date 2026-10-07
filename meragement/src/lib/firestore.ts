@@ -11,6 +11,7 @@ import {
   orderBy,
   onSnapshot,
   writeBatch,
+  increment,
   type CollectionReference,
   type DocumentReference,
   type DocumentData,
@@ -256,15 +257,12 @@ export async function createReply(
     isSolution: false,
     createdAt: serverTimestamp(),
   });
-  // Increment reply count
+  // P0: atomik — cegah race read-then-write replyCount
   const discRef = doc(db, `projects/${projectId}/discussions`, discussionId);
-  const snap = await getDoc(discRef);
-  if (snap.exists()) {
-    await updateDoc(discRef, {
-      replyCount: ((snap.data() as Discussion).replyCount || 0) + 1,
-      updatedAt: serverTimestamp(),
-    });
-  }
+  await updateDoc(discRef, {
+    replyCount: increment(1),
+    updatedAt: serverTimestamp(),
+  }).catch(() => undefined);
   return replyRef;
 }
 

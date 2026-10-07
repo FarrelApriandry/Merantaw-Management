@@ -1,3 +1,4 @@
+// src/components/space/discussions/DiscussionsPage.tsx — P0: pakai verified user, bukan localStorage.
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, MessageCircle, CheckCircle2 } from "lucide-react";
@@ -14,7 +15,8 @@ import {
 } from "@/components/ui/dialog";
 import { onDiscussionsSnapshot, createDiscussion } from "@/lib/firestore";
 import DiscussionThread from "./DiscussionThread";
-import type { Discussion, StoredUser } from "@/lib/types";
+import { useCurrentUser } from "@/lib/hooks/useCurrentUser";
+import type { Discussion } from "@/lib/types";
 
 export interface DiscussionsPageProps {
   projectId: string;
@@ -28,10 +30,7 @@ export default function DiscussionsPage({ projectId }: DiscussionsPageProps) {
   const [newTitle, setNewTitle] = useState<string>("");
   const [newContent, setNewContent] = useState<string>("");
 
-  const currentUser: Partial<StoredUser> =
-    typeof window !== "undefined"
-      ? (JSON.parse(localStorage.getItem("userData") || "{}") as Partial<StoredUser>)
-      : {};
+  const currentUser = useCurrentUser();
 
   useEffect(() => {
     if (!projectId) return;

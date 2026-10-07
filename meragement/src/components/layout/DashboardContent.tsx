@@ -1,4 +1,5 @@
-// src/components/layout/DashboardContent.tsx
+// src/components/layout/DashboardContent.tsx — P0: jangan dump users/projects.
+// Hanya hitung scoped projects milik user + tanpa enumerasi email.
 import {
     Users,
     Folder,
@@ -9,26 +10,29 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import StatCard from "../dashboard/StatCard";
 import ProjectCard from "../dashboard/ProjectCard";
 import TaskCard from "../dashboard/TaskCard";
-import { getUsers } from "@/lib/api/users";
-import { getProjects } from "@/lib/api/projects";
+import { getMyProjects } from "@/lib/api/projects";
+import { useCurrentUser } from "@/lib/hooks/useCurrentUser";
 import { useState, useEffect, type JSX } from "react";
-import type { AppUser, Project } from "@/lib/types";
+import type { Project } from "@/lib/types";
 
 export default function DashboardContent(): JSX.Element {
 
-    const [users, setUsers] = useState<AppUser[]>([]);
+    const user = useCurrentUser();
     const [space, setSpace] = useState<Project[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
+        if (!user?.uid) {
+            setLoading(false);
+            return;
+        }
         const fetchData = async (): Promise<void> => {
             try {
                 setLoading(true);
-                const userData = await getUsers();
-                const spaceData = await getProjects();
+                // P0 scoped: hanya projects di mana user jadi member
+                const spaceData = await getMyProjects(user.uid);
                 setSpace(spaceData);
-                setUsers(userData);
             } catch (err) {
                 console.error('Error fetching data:', err);
                 setError('Failed to load data');
@@ -38,16 +42,16 @@ export default function DashboardContent(): JSX.Element {
         };
 
         fetchData();
-    }, []);
+    }, [user?.uid]);
 
-    const activeUsers = users.filter((user) => user.isActive).length;
+    void error;
     const activeSpace = space.filter((s) => s.status === "active").length;
 
     return (
         <div className="space-y-8">
         {/* --- Stats Section --- */}
         <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <StatCard icon={<Users />} label="Active Members" value={loading ? "..." : activeUsers.toString()} />
+            <StatCard icon={<Users />} label="My Active Spaces" value={loading ? "..." : activeSpace.toString()} />
             <StatCard icon={<Folder />} label="Space" value={loading ? "..." : activeSpace.toString()} />
             <StatCard icon={<Target />} label="Goals Achieved" value="8" />
         </section>

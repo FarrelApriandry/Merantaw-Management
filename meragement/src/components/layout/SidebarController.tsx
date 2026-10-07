@@ -1,7 +1,8 @@
+// src/components/layout/SidebarController.tsx — P0: jangan dump semua projects untuk title.
 import { useState, useEffect, type ReactNode } from "react";
 import Sidebar from "./Sidebar";
 import Navbar from "./Navbar";
-import { collection, onSnapshot } from "firebase/firestore";
+import { doc, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebaseConfig";
 import type { Project } from "@/lib/types";
 
@@ -20,15 +21,16 @@ export default function SidebarController({ children, Header }: SidebarControlle
         const spaceId = pathParts[pathParts.indexOf('space') + 1];
 
         if (spaceId) {
-            // Listener ke Firestore buat ambil title project yang spesifik
-            const unsub = onSnapshot(collection(db, "projects"), (snapshot) => {
-                const currentProject = snapshot.docs.find((d) => d.id === spaceId);
-                if (currentProject) {
-                    const data = currentProject.data() as Partial<Project>;
+            // P0: listen SATU doc saja, bukan collection(projects)
+            const unsub = onSnapshot(doc(db, "projects", spaceId), (snap) => {
+                if (snap.exists()) {
+                    const data = snap.data() as Partial<Project>;
                     setActiveTitle("Project - " + (data.title ?? ""));
                 }
             });
             return () => unsub();
+        } else {
+            setActiveTitle(Header);
         }
     }, [Header]); // Trigger ulang kalau navigasi berubah
 

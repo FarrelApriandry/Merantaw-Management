@@ -1,14 +1,16 @@
-// src/components/forms/FormContent.tsx
+// src/components/layout/FormContent.tsx — P0: hanya admin boleh buka form create user/team/project.
 import { useState, type JSX } from "react";
 import AddUserForm from "@/components/forms/AddUserForm";
 import AddTeamForm from "@/components/forms/AddTeamForm";
 import AddProjectForm from "@/components/forms/AddProjectForm";
 import { Button } from "@/components/ui/button";
+import { AdminProtector } from "@/components/auth/PagesProtector";
 
 type ActiveForm = "user" | "team" | "project";
 
 export default function FormContent(): JSX.Element {
     const [activeForm, setActiveForm] = useState<ActiveForm>("user");
+    const { isUserAdmin, checking } = AdminProtector();
 
     const renderForm = (): JSX.Element => {
         switch (activeForm) {
@@ -22,6 +24,18 @@ export default function FormContent(): JSX.Element {
             return <AddUserForm />;
         }
     };
+
+    if (checking) {
+        return <div className="text-white/60 text-sm">Checking permissions…</div>;
+    }
+
+    if (!isUserAdmin) {
+        return (
+            <div className="p-6 rounded-xl border border-red-500/20 bg-red-500/5 text-red-200 text-sm">
+                Akses ditolak — hanya admin yang boleh membuka halaman Forms.
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6">

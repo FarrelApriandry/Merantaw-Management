@@ -1,4 +1,4 @@
-// src/lib/firebaseConfig.ts
+// src/lib/firebaseConfig.ts — P0: getEmailAuth utamakan Firebase Auth session
 import { initializeApp, type FirebaseApp } from "firebase/app";
 import { getAuth, type Auth } from "firebase/auth";
 import {
@@ -24,6 +24,9 @@ export const db: Firestore = getFirestore(app);
 export { serverTimestamp };
 
 export function getEmailAuth(): string | null {
+  // P0: sumber kebenaran = Firebase Auth, bukan localStorage (mudah dipalsu)
+  const email = auth.currentUser?.email;
+  if (email) return email;
   if (typeof window !== "undefined") {
     const storedUser = localStorage.getItem("userData");
     if (storedUser) {
@@ -37,3 +40,4 @@ export function getEmailAuth(): string | null {
   }
   return null;
 }
+
