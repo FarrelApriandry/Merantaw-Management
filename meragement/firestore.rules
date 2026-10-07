@@ -1,0 +1,112 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        (request.auth.token.keys().hasAny(['admin', 'role']) &&
+          (request.auth.token.admin == true || request.auth.token.role == 'admin')) ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && userDoc().role == 'admin')
+      );
+    }
+
+    function projectData(pid) {
+      return get(/databases/$(database)/documents/projects/$(pid)).data;
+    }
+
+    function isMember(pid) {
+      return isSignedIn() && exists(/databases/$(database)/documents/projects/$(pid)) &&
+        request.auth.uid in projectData(pid).get('assignedUsers', []);
+    }
+
+    function canReadProject(pid) {
+      return isAdmin() || isMember(pid);
+    }
+
+    function validLink() {
+      return !('link' in request.resource.data) ||
+        request.resource.data.link == null ||
+        request.resource.data.link == '' ||
+        request.resource.data.link.matches('https?://.+');
+    }
+
+    match /projects/{pid} {
+      allow read: if canReadProject(pid);
+      allow create: if isAdmin();
+      allow update: if isAdmin() || isMember(pid);
+      allow delete: if isAdmin();
+
+      match /lists/{listId} {
+        allow read: if canReadProject(pid);
+        allow create, update: if (isAdmin() || isMember(pid)) && validLink();
+        // Prevent orphan tasks: only admin may delete a list directly.
+        // Prefer server-side cascade delete (Cloud Function / Admin SDK).
+        allow delete: if isAdmin();
+
+        match /tasks/{taskId} {
+          allow read: if canReadProject(pid);
+          allow create, update: if (isAdmin() || isMember(pid)) && validLink();
+          allow delete: if isAdmin() || isMember(pid);
+        }
+      }
+
+      match /events/{eventId} {
+        allow read: if canReadProject(pid);
+        allow create, update, delete: if isAdmin() || isMember(pid);
+      }
+
+      match /docs/{docId} {
+        allow read: if canReadProject(pid);
+        allow create, update, delete: if isAdmin() || isMember(pid);
+      }
+
+      match /discussions/{discId} {
+        allow read: if canReadProject(pid);
+        allow create: if isAdmin() || isMember(pid);
+        allow update: if isAdmin() || isMember(pid);
+        allow delete: if isAdmin();
+
+        match /replies/{replyId} {
+          allow read: if canReadProject(pid);
+          allow create: if isAdmin() || isMember(pid);
+          allow update: if isAdmin() || isMember(pid);
+          allow delete: if isAdmin() || isMember(pid);
+        }
+      }
+    }
+
+    match /users/{uid} {
+      allow read: if isSignedIn();
+      // Users may update own non-privileged fields; role escalation blocked below.
+      allow create: if isAdmin();
+      allow update: if isAdmin() ||
+        (isSignedIn() && request.auth.uid == uid &&
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'isActive']));
+      allow delete: if isAdmin();
+    }
+
+    // Public directory (non-sensitive). No email enumeration: read requires auth.
+    match /users_public/{id} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    match /teams/{teamId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Deny everything else by default
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
