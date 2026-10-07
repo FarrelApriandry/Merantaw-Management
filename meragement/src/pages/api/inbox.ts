@@ -1,6 +1,6 @@
-// src/pages/api/inbox.ts — P0 hardened Gmail IMAP inbox (Astro server endpoint)
-// - Secret HANYA dari server env (tanpa prefix PUBLIC_)
-// - Wajib Authorization: Bearer <INBOX_API_TOKEN>
+// src/pages/api/inbox.ts — P2: verifikasi Firebase ID token (firebase-admin) + legacy token.
+// - Terima Bearer <Firebase ID token> yang valid (verifyIdToken) ATAU legacy INBOX_API_TOKEN.
+// - Secret HANYA dari server env (tanpa prefix PUBLIC_).
 // - TLS verify ON, batasi search, pastikan connection.end()
 import Imap from "imap-simple";
 import type { InboxEmail } from "@/lib/types";
@@ -30,19 +30,36 @@ function json(body: unknown, status: number): Response {
   });
 }
 
-function assertAuthorized(req: Request): boolean {
-  const authHeader = req.headers.get("authorization") ?? "";
-  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
-  if (!token) return false;
-  // P0: token statis server-side. Set INBOX_API_TOKEN di Vercel env (tanpa PUBLIC_).
-  // Client wajib kirim Firebase ID token? Untuk sekarang samakan dengan INBOX_API_TOKEN
-  // yang didapat setelah login via endpoint terpisah — jangan expose via PUBLIC_.
-  // TODO P2: verifikasi Firebase ID token via firebase-admin verifyIdToken().
-  const expected =
-    (typeof process !== "undefined" && process.env.INBOX_API_TOKEN) ||
-    (import.meta.env.INBOX_API_TOKEN as string | undefined);
-  if (!expected) return false;
-  return token === expected;
+type AdminAuthLike = { verifyIdToken: (token: string) => Promise<unknown> };
+
+let adminAuthPromise: Promise<AdminAuthLike | null> | null = null;
+
+async function getAdminAuth(): Promise<AdminAuthLike | null> {
+  if (adminAuthPromise) return adminAuthPromise;
+  adminAuthPromise = (async () => {
+    try {
+      const appMod = await import("firebase-admin/app");
+      const authMod = await import("firebase-admin/auth");
+      const apps = appMod.getApps();
+      if (apps.length === 0) {
+        // Prefer explicit service-account JSON bila tersedia (Vercel env),
+        // fallback ke applicationDefault() (GOOGLE_APPLICATION_CREDENTIALS).
+        const raw =
+          (typeof process !== "undefined" && process.env.FIREBASE_SERVICE_ACCOUNT_JSON) ||
+          undefined;
+        if (raw) {
+          const cred = JSON.parse(raw) as Parameters<typeof appMod.cert>[0];
+          appMod.initializeApp({ credential: appMod.cert(cred) });
+        } else {
+          appMod.initializeApp();
+        }
+      }
+      return authMod.getAuth() as unknown as AdminAuthLike;
+    } catch {
+      return null;
+    }
+  })();
+  return adminAuthPromise;
 }
 
 function getServerEnv(name: string): string | undefined {
@@ -51,8 +68,32 @@ function getServerEnv(name: string): string | undefined {
   return typeof v === "string" && v ? v : undefined;
 }
 
+function getBearerToken(req: Request): string {
+  const authHeader = req.headers.get("authorization") ?? "";
+  return authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
+}
+
+async function assertAuthorized(req: Request): Promise<boolean> {
+  const token = getBearerToken(req);
+  if (!token) return false;
+  // P2: legacy service token — samakan dengan INBOX_API_TOKEN server-side.
+  const expected =
+    (typeof process !== "undefined" && process.env.INBOX_API_TOKEN) ||
+    (import.meta.env.INBOX_API_TOKEN as string | undefined);
+  if (expected && token === expected) return true;
+  // P2: Firebase ID token dari client (auth.currentUser.getIdToken()).
+  try {
+    const adminAuth = await getAdminAuth();
+    if (!adminAuth) return false;
+    await adminAuth.verifyIdToken(token);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function GET({ request }: { request: Request }): Promise<Response> {
-  if (!assertAuthorized(request)) {
+  if (!(await assertAuthorized(request))) {
     return json({ error: "unauthorized" }, 401);
   }
 

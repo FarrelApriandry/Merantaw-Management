@@ -133,9 +133,11 @@ export default function TaskPage({ projectId }: TaskPageProps) {
       try {
         await createTask(projectId, activeListId, payload);
         setPendingTasks((prev) => prev.filter((t) => t.id !== tempId));
-        toast.success("Task added");
-      } catch {
-        toast.error("Failed to add task");
+      } catch (err) {
+        // P2: rollback benar — hapus pending tempId, lempar ulang agar AddTaskRow tidak toast success palsu.
+        // Toast success/error ditangani AddTaskRow (satu sumber) agar tidak double.
+        setPendingTasks((prev) => prev.filter((t) => t.id !== tempId));
+        throw err;
       }
     },
     [projectId, activeListId]
@@ -145,9 +147,14 @@ export default function TaskPage({ projectId }: TaskPageProps) {
   const handleBatchDelete = async (): Promise<void> => {
     if (!selected.size || !activeListId) return;
     if (!confirm(`Delete ${selected.size} task(s)?`)) return;
-    await batchDeleteTasks(projectId, activeListId, Array.from(selected));
-    setSelected(new Set());
-    toast.success("Tasks deleted");
+    try {
+      await batchDeleteTasks(projectId, activeListId, Array.from(selected));
+      setSelected(new Set());
+      toast.success("Tasks deleted");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Gagal menghapus tasks";
+      toast.error(msg);
+    }
   };
 
   const toggleSelect = (taskId: string): void =>

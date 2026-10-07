@@ -49,7 +49,10 @@ service cloud.firestore {
     match /projects/{pid} {
       allow read: if canReadProject(pid);
       allow create: if isAdmin();
-      allow update: if isAdmin() || isMember(pid);
+      // P2: member boleh update field operasional, tapi tidak boleh eskalasi
+      // membership/tim/createdBy. Perubahan itu hanya admin.
+      allow update: if isAdmin() ||
+        (isMember(pid) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['assignedUsers', 'teamId', 'createdBy', 'createdAt']));
       allow delete: if isAdmin();
 
       match /lists/{listId} {
@@ -87,7 +90,9 @@ service cloud.firestore {
         match /replies/{replyId} {
           allow read: if canReadProject(pid);
           allow create: if isAdmin() || isMember(pid);
-          allow update: if isAdmin() || isMember(pid) || isDiscussionAuthor(pid, discId);
+          // P2: isSolution hanya author/admin — member boleh edit konten tapi tidak flip flag solusi.
+          allow update: if isAdmin() || isDiscussionAuthor(pid, discId) ||
+            (isMember(pid) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['isSolution']));
           allow delete: if isAdmin() || isMember(pid);
         }
       }

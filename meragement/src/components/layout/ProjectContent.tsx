@@ -12,12 +12,13 @@ export default function TeamsPage(): JSX.Element {
     const [projects, setProject] = useState<Project[]>([]);
 
     useEffect(() => {
-        if (!user?.uid) return;
-        async function fetchProjects() {
-        const data = await getMyProjects(user.uid).catch(() => []);
+        const uid = user?.uid;
+        if (!uid) return;
+        async function fetchProjects(userId: string) {
+        const data = await getMyProjects(userId).catch(() => []);
         setProject(data);
         }
-        fetchProjects();
+        fetchProjects(uid);
     }, [user?.uid]);
 
     return (
