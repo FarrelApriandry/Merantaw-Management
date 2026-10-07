@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, type ChangeEvent } from "react";
+import { useState, useEffect, useCallback, useRef, type ChangeEvent } from "react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { motion } from "framer-motion";
@@ -23,16 +23,26 @@ export default function DocEditor({ projectId, doc, onBack }: DocEditorProps) {
   const [saving, setSaving] = useState<boolean>(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const save = useCallback(async (text: string): Promise<void> => {
+  const save = useCallback(async (text: string): Promise<boolean> => {
     setSaving(true);
     try {
       await updateDocContent(projectId, doc.id, { content: text });
+      return true;
     } catch {
       toast.error("Failed to save");
+      return false;
     } finally {
       setSaving(false);
     }
   }, [projectId, doc.id]);
+
+  // P1: sync saat ganti dokumen + bersihkan timer saat unmount/ganti doc (cegah write nyasar)
+  useEffect(() => {
+    setContent(doc.content || "");
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [doc.id, doc.content]);
 
   const handleChange = (e: ChangeEvent<HTMLTextAreaElement>): void => {
     const val = e.target.value;
@@ -42,10 +52,10 @@ export default function DocEditor({ projectId, doc, onBack }: DocEditorProps) {
     debounceRef.current = setTimeout(() => save(val), 1500);
   };
 
-  const handleManualSave = (): void => {
+  const handleManualSave = async (): Promise<void> => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    save(content);
-    toast.success("Saved");
+    const ok = await save(content);
+    if (ok) toast.success("Saved");
   };
 
   return (

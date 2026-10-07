@@ -1,3 +1,4 @@
+// src/components/space/discussions/DiscussionThread.tsx — P1: author-check + error handling + rollback aman.
 import { useState, useEffect } from "react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -12,7 +13,7 @@ import type { Discussion, Reply, StoredUser } from "@/lib/types";
 export interface DiscussionThreadProps {
   projectId: string;
   discussion: Discussion;
-  currentUser: Partial<StoredUser>;
+  currentUser: StoredUser | null;
   onBack: () => void;
 }
 
@@ -21,7 +22,7 @@ export default function DiscussionThread({ projectId, discussion, currentUser, o
   const [replyContent, setReplyContent] = useState<string>("");
   const [sending, setSending] = useState<boolean>(false);
 
-  const isAuthor = currentUser?.uid === discussion.authorId;
+  const isAuthor = !!currentUser?.uid && currentUser.uid === discussion.authorId;
 
   useEffect(() => {
     const unsub = onRepliesSnapshot(projectId, discussion.id, setReplies);
@@ -29,20 +30,39 @@ export default function DiscussionThread({ projectId, discussion, currentUser, o
   }, [projectId, discussion.id]);
 
   const handleReply = async (): Promise<void> => {
-    if (!replyContent.trim()) return;
+    if (!replyContent.trim() || sending) return;
+    if (!currentUser?.uid) {
+      toast.error("Silakan login ulang");
+      return;
+    }
     setSending(true);
-    await createReply(projectId, discussion.id, {
-      content: replyContent.trim(),
-      authorId: currentUser?.uid || "",
-      authorName: currentUser?.name || currentUser?.email || "Anonymous",
-    });
-    setReplyContent("");
-    setSending(false);
+    try {
+      await createReply(projectId, discussion.id, {
+        content: replyContent.trim(),
+        authorId: currentUser.uid,
+        authorName: currentUser.name || currentUser.email || "Anonymous",
+      });
+      setReplyContent("");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Gagal mengirim balasan";
+      toast.error(msg);
+    } finally {
+      setSending(false);
+    }
   };
 
   const handleMarkSolution = async (replyId: string): Promise<void> => {
-    await markAsSolution(projectId, discussion.id, replyId);
-    toast.success("Marked as solution!");
+    if (!isAuthor) {
+      toast.error("Hanya author diskusi yang boleh menandai solusi");
+      return;
+    }
+    try {
+      await markAsSolution(projectId, discussion.id, replyId, currentUser?.uid);
+      toast.success("Marked as solution!");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Gagal menandai solusi";
+      toast.error(msg);
+    }
   };
 
   return (

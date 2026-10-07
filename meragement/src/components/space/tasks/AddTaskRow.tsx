@@ -43,10 +43,17 @@ export default function AddTaskRow({ projectMembers = [], projectCategories = []
     }
 
     setLoading(true)
+    // P1: parse tanggal date-input sebagai local midnight, bukan UTC (hindari geser timezone)
+    const parsedDue = new Date(`${dueDate}T00:00:00`)
+    if (isNaN(parsedDue.getTime())) {
+      setLoading(false)
+      toast.warning("Tanggal tidak valid")
+      return
+    }
     const payload = {
       title: title.trim(),
       assignedTo,
-      dueDate: new Date(dueDate),
+      dueDate: parsedDue,
       status,
       link: "",
       category: categories,

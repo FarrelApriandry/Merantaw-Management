@@ -81,7 +81,12 @@ export async function updateList(
 }
 
 export async function deleteList(projectId: string, listId: string): Promise<void> {
-  await deleteDoc(doc(db, `projects/${projectId}/lists`, listId));
+  // P1: cascade — hapus tasks di subcollection agar tidak orphan
+  const tSnap = await getDocs(tasksCol(projectId, listId));
+  const batch = writeBatch(db);
+  tSnap.docs.forEach((d) => batch.delete(d.ref));
+  batch.delete(doc(db, `projects/${projectId}/lists`, listId));
+  await batch.commit();
 }
 
 // ─── Tasks CRUD (nested under list) ─────────────────────────
@@ -280,17 +285,25 @@ export function onRepliesSnapshot(
 export async function markAsSolution(
   projectId: string,
   discussionId: string,
-  replyId: string
+  replyId: string,
+  requesterUid?: string
 ): Promise<void> {
-  const batch = writeBatch(db);
   const discRef = doc(db, `projects/${projectId}/discussions`, discussionId);
 
-  // Get current discussion to check for existing solution
+  // P1: verifikasi author — hanya author diskusi yang boleh menandai solusi.
+  // Rules Firestore juga membatasi status/solutionId hanya author/admin.
   const discSnap = await getDoc(discRef);
-  const prevSolutionId = (discSnap.data() as Discussion | undefined)?.solutionId;
+  if (!discSnap.exists()) throw new Error("Discussion not found");
+  const discData = discSnap.data() as Discussion;
+  if (requesterUid && discData.authorId && discData.authorId !== requesterUid) {
+    throw new Error("Only the discussion author can mark a solution");
+  }
+
+  const batch = writeBatch(db);
+  const prevSolutionId = discData.solutionId;
 
   // Reset previous solution if exists
-  if (prevSolutionId) {
+  if (prevSolutionId && prevSolutionId !== replyId) {
     const prevRef = doc(db, `projects/${projectId}/discussions/${discussionId}/replies`, prevSolutionId);
     batch.update(prevRef, { isSolution: false });
   }
@@ -302,6 +315,15 @@ export async function markAsSolution(
   // Update discussion status
   batch.update(discRef, { status: "solved", solutionId: replyId, updatedAt: serverTimestamp() });
 
+  await batch.commit();
+}
+
+export async function deleteDiscussion(projectId: string, discussionId: string): Promise<void> {
+  // P1: cascade — hapus replies agar tidak orphan
+  const rSnap = await getDocs(repliesCol(projectId, discussionId));
+  const batch = writeBatch(db);
+  rSnap.docs.forEach((d) => batch.delete(d.ref));
+  batch.delete(doc(db, `projects/${projectId}/discussions`, discussionId));
   await batch.commit();
 }
 
