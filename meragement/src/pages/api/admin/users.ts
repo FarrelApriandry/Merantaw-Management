@@ -48,9 +48,9 @@ export const POST: APIRoute = async ({ request }) => {
   if (!name?.trim() || !email?.trim() || !password || password.length < 8) {
     return json({ error: "name, email, password (min 8) wajib diisi" }, 400);
   }
-  const safeRole = role === "admin" ? "admin" : "member";
+  const safeRole = role === "admin" ? "admin" : role === "investor" ? "investor" : "member";
   try {
-    // createUser selalu membuat member (defaultRole) — role "admin" di-set
+    // createUser selalu membuat member (defaultRole) — role non-member di-set
     // setelahnya via Drizzle (jalur sama dengan PATCH, satu sumber penulisan role).
     const created = await auth.api.createUser({
       body: {
@@ -60,8 +60,8 @@ export const POST: APIRoute = async ({ request }) => {
       },
     });
     const newId = created.user.id;
-    if (safeRole === "admin") {
-      await db.update(user).set({ role: "admin" }).where(eq(user.id, newId));
+    if (safeRole !== "member") {
+      await db.update(user).set({ role: safeRole }).where(eq(user.id, newId));
     }
     return json({ id: newId, email: created.user.email, role: safeRole }, 201);
   } catch (err) {
@@ -94,8 +94,8 @@ export const PATCH: APIRoute = async ({ request }) => {
   if (id === me.id && (role !== undefined || isActive !== undefined)) {
     return json({ error: "tidak boleh mengubah role/status diri sendiri" }, 400);
   }
-  if (role !== undefined && role !== "admin" && role !== "member") {
-    return json({ error: "role harus admin|member" }, 400);
+  if (role !== undefined && role !== "admin" && role !== "member" && role !== "investor") {
+    return json({ error: "role harus admin|member|investor" }, 400);
   }
   if (password !== undefined && password.length < 8) {
     return json({ error: "password min 8 karakter" }, 400);

@@ -12,6 +12,8 @@ export const prerender = false;
 export const GET: APIRoute = async ({ request }) => {
   const me = await requireUser(request);
   if (!me) return json({ error: "unauthorized" }, 401);
+  // Investor tidak perlu direktori user (tidak bisa assign/memberi tugas).
+  if (me.role === "investor") return json([], 200);
   const rows = await db
     .select({ id: user.id, name: user.name, email: user.email, role: user.role })
     .from(user)

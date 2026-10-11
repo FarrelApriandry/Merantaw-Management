@@ -38,6 +38,11 @@ export function isAdmin(u: ServerUser | null): boolean {
   return !!u && u.role === "admin" && u.isActive !== false;
 }
 
+// Investor: read-only per project yang dia di-assign. Tidak boleh write apa pun.
+export function isInvestor(u: ServerUser | null): boolean {
+  return !!u && u.role === "investor" && u.isActive !== false;
+}
+
 export function json(body: unknown, status: number): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -64,13 +69,15 @@ export function isMemberOf(u: ServerUser, p: ProjectRow): boolean {
   return (p.assignedUsers ?? []).includes(u.id);
 }
 
-// rules: canReadProject = admin | member
+// rules: canReadProject = admin | member | investor (investor wajib assigned)
 export function canReadProject(u: ServerUser, p: ProjectRow): boolean {
-  return u.role === "admin" || isMemberOf(u, p);
+  if (u.role === "admin") return true;
+  return isMemberOf(u, p); // member & investor sama-sama lewat assignedUsers
 }
 
-// rules: canWriteProject (operasional) = admin | member
+// rules: canWriteProject (operasional) = admin | member. INVESTOR TIDAK BOLEH.
 export function canWriteProject(u: ServerUser, p: ProjectRow): boolean {
+  if (u.role === "investor") return false;
   return u.role === "admin" || isMemberOf(u, p);
 }
 

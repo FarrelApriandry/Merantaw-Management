@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { CalendarDays, ListTodo, Trash2, CheckCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
+import { useCurrentUser } from "@/lib/hooks/useCurrentUser";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 import "react-big-calendar/lib/addons/dragAndDrop/styles.css";
 import type { Task, CalEvent, SpaceList, FirestoreTimestampLike } from "@/lib/types";
@@ -72,6 +73,7 @@ interface SlotInfo {
 }
 
 export default function CalendarPage({ projectId }: CalendarPageProps) {
+  const readOnly = useCurrentUser()?.role === "investor";
   const [tasks, setTasks] = useState<Task[]>([]);
   const [taskListMap, setTaskListMap] = useState<Record<string, string>>({}); // taskId -> listId
   const [events, setEvents] = useState<CalEvent[]>([]);
@@ -194,8 +196,9 @@ export default function CalendarPage({ projectId }: CalendarPageProps) {
     }
   }, [projectId]);
 
-  // Range selection → create event
+  // Range selection → create event (investor: dinonaktifkan)
   const handleSelectSlot = (slotInfo: SlotInfo): void => {
+    if (readOnly) return;
     setNewSlot(slotInfo);
     setNewTitle("");
     setCreateOpen(true);
@@ -256,17 +259,17 @@ export default function CalendarPage({ projectId }: CalendarPageProps) {
           endAccessor="end"
           defaultView="month"
           views={["month", "week", "day"]}
-          selectable
-          resizable
+          selectable={!readOnly}
+          resizable={!readOnly}
           onSelectEvent={(e: unknown) => setSelectedEvent(e as CalendarItem)}
           onSelectSlot={handleSelectSlot}
-          onEventDrop={handleEventDrop as unknown as (args: never) => void}
-          onEventResize={handleEventResize as unknown as (args: never) => void}
+          onEventDrop={readOnly ? undefined : handleEventDrop as unknown as (args: never) => void}
+          onEventResize={readOnly ? undefined : handleEventResize as unknown as (args: never) => void}
           eventPropGetter={eventStyleGetter as unknown as (event: never) => { style: Record<string, string | number> }}
           components={{ event: EventComponent, eventWrapper: EventWrapper }}
           style={{ height: "70vh" }}
           popup
-          draggableAccessor={() => true}
+          draggableAccessor={() => !readOnly}
         />
       </div>
 
@@ -297,9 +300,11 @@ export default function CalendarPage({ projectId }: CalendarPageProps) {
           </div>
           {selectedEvent?.type === "event" && (
             <DialogFooter>
+              {!readOnly && (
               <Button variant="destructive" size="sm" onClick={handleDeleteEvent}>
                 <Trash2 size={14} /> Delete
               </Button>
+              )}
             </DialogFooter>
           )}
         </DialogContent>

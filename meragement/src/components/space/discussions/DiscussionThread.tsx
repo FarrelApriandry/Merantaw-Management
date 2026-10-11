@@ -14,10 +14,11 @@ export interface DiscussionThreadProps {
   projectId: string;
   discussion: Discussion;
   currentUser: StoredUser | null;
+  readOnly?: boolean;
   onBack: () => void;
 }
 
-export default function DiscussionThread({ projectId, discussion, currentUser, onBack }: DiscussionThreadProps) {
+export default function DiscussionThread({ projectId, discussion, currentUser, readOnly = false, onBack }: DiscussionThreadProps) {
   const [replies, setReplies] = useState<Reply[]>([]);
   const [replyContent, setReplyContent] = useState<string>("");
   const [sending, setSending] = useState<boolean>(false);
@@ -156,7 +157,8 @@ export default function DiscussionThread({ projectId, discussion, currentUser, o
         </AnimatePresence>
       </div>
 
-      {/* Reply Input */}
+      {/* Reply Input — disembunyikan untuk investor (read-only) */}
+      {!readOnly && (
       <div className="flex gap-3">
         <textarea
           value={replyContent}
@@ -168,6 +170,7 @@ export default function DiscussionThread({ projectId, discussion, currentUser, o
           <Send size={16} />
         </Button>
       </div>
+      )}
     </motion.div>
   );
 }

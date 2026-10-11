@@ -167,6 +167,7 @@ export default function AddUserForm(): JSX.Element {
                     <SelectContent className="bg-[#1a1a1a]/90 border-white/20 text-white backdrop-blur-xl">
                     <SelectItem value="member">Member</SelectItem>
                     <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="investor">Investor (read-only)</SelectItem>
                     </SelectContent>
                 </Select>
                 </div>

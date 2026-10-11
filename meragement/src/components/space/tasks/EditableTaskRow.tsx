@@ -23,6 +23,7 @@ export interface EditableTaskRowProps {
   projectCategories?: string[];
   toggleSelect: (id: string) => void;
   selected: Set<string>;
+  readOnly?: boolean;
 }
 
 export default function EditableTaskRow({
@@ -33,10 +34,12 @@ export default function EditableTaskRow({
   projectCategories = [],
   toggleSelect,
   selected,
+  readOnly = false,
 }: EditableTaskRowProps) {
   const [saving, setSaving] = useState<boolean>(false);
 
   const handleUpdate = async (field: string, value: unknown): Promise<void> => {
+    if (readOnly) return; // investor: read-only, API juga menolak
     try {
       setSaving(true);
       // P0: validasi link — tolak javascript:/data:/blob: dsb, hanya http/https
@@ -77,9 +80,11 @@ export default function EditableTaskRow({
       whileHover={{ backgroundColor: "rgba(255,255,255,0.05)" }}
       transition={{ duration: 0.2 }}
     >
-      {/* Checkbox */}
+      {/* Checkbox — disembunyikan untuk investor */}
       <td className="px-4 py-2">
+        {!readOnly && (
         <input type="checkbox" checked={selected.has(task.id)} onChange={() => toggleSelect(task.id)} />
+        )}
       </td>
 
       {/* Title */}

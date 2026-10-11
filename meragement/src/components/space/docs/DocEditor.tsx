@@ -14,16 +14,18 @@ type DocMode = "split" | "edit" | "preview";
 export interface DocEditorProps {
   projectId: string;
   doc: DocItem;
+  readOnly?: boolean;
   onBack: () => void;
 }
 
-export default function DocEditor({ projectId, doc, onBack }: DocEditorProps) {
+export default function DocEditor({ projectId, doc, readOnly = false, onBack }: DocEditorProps) {
   const [content, setContent] = useState<string>(doc.content || "");
-  const [mode, setMode] = useState<DocMode>("split"); // split | edit | preview
+  const [mode, setMode] = useState<DocMode>(readOnly ? "preview" : "split"); // investor langsung preview
   const [saving, setSaving] = useState<boolean>(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const save = useCallback(async (text: string): Promise<boolean> => {
+    if (readOnly) return false; // investor: read-only, API juga menolak
     setSaving(true);
     try {
       await apiPatch(`/api/projects/${projectId}/docs/${doc.id}`, { content: text });
@@ -77,6 +79,10 @@ export default function DocEditor({ projectId, doc, onBack }: DocEditorProps) {
         </div>
         <div className="flex items-center gap-2">
           {saving && <span className="text-xs text-white/40">Saving...</span>}
+          {readOnly ? (
+          <Badge className="bg-amber-500/20 text-amber-300 text-xs">Read-only</Badge>
+          ) : (
+          <>
           {/* Mode toggles */}
           <div className="flex bg-white/5 rounded-lg p-0.5">
             <button
@@ -101,13 +107,15 @@ export default function DocEditor({ projectId, doc, onBack }: DocEditorProps) {
           <Button size="sm" onClick={handleManualSave}>
             <Save size={14} /> Save
           </Button>
+          </>
+          )}
         </div>
       </header>
 
       {/* Editor Area */}
       <div className="flex-1 flex gap-4 min-h-0 overflow-hidden">
-        {/* Textarea */}
-        {mode !== "preview" && (
+        {/* Textarea — hanya untuk non-investor */}
+        {!readOnly && mode !== "preview" && (
           <div className={`flex flex-col ${mode === "split" ? "w-1/2" : "w-full"}`}>
             <textarea
               value={content}
@@ -120,8 +128,8 @@ export default function DocEditor({ projectId, doc, onBack }: DocEditorProps) {
         )}
 
         {/* Preview */}
-        {mode !== "edit" && (
-          <div className={`overflow-y-auto ${mode === "split" ? "w-1/2" : "w-full"} bg-white/5 border border-white/10 rounded-lg p-6 min-h-[60vh]`}>
+        {(readOnly || mode !== "edit") && (
+          <div className={`overflow-y-auto ${!readOnly && mode === "split" ? "w-1/2" : "w-full"} bg-white/5 border border-white/10 rounded-lg p-6 min-h-[60vh]`}>
             <article className="prose prose-invert prose-sm max-w-none">
               <Markdown remarkPlugins={[remarkGfm]}>{content}</Markdown>
             </article>

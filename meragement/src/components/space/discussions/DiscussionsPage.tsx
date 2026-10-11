@@ -33,6 +33,7 @@ export default function DiscussionsPage({ projectId }: DiscussionsPageProps) {
   const [newContent, setNewContent] = useState<string>("");
 
   const currentUser = useCurrentUser();
+  const readOnly = currentUser?.role === "investor";
 
   const load = async (): Promise<void> => {
     try {
@@ -73,6 +74,7 @@ export default function DiscussionsPage({ projectId }: DiscussionsPageProps) {
         projectId={projectId}
         discussion={activeThread}
         currentUser={currentUser}
+        readOnly={readOnly}
         onBack={() => setActiveThread(null)}
       />
     );
@@ -85,7 +87,7 @@ export default function DiscussionsPage({ projectId }: DiscussionsPageProps) {
           <h1 className="text-2xl font-semibold">Discussions</h1>
           <p className="text-sm text-white/60">Ask questions, share ideas, find solutions</p>
         </div>
-        <Button onClick={() => setCreateOpen(true)}>
+        <Button onClick={() => setCreateOpen(true)} disabled={readOnly} title={readOnly ? "Investor hanya bisa memantau" : undefined}>
           <Plus size={16} /> New Thread
         </Button>
       </header>

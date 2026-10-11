@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/select";
 import type { DocItem, FirestoreTimestampLike } from "@/lib/types";
 import { toDateSafe } from "@/lib/types";
+import { useCurrentUser } from "@/lib/hooks/useCurrentUser";
 
 const CATEGORIES = ["GDD", "SRS", "Wiki", "Meeting Notes", "Other"];
 
@@ -34,6 +35,7 @@ export interface DocsPageProps {
 }
 
 export default function DocsPage({ projectId }: DocsPageProps) {
+  const readOnly = useCurrentUser()?.role === "investor";
   const [docs, setDocs] = useState<DocItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [activeDoc, setActiveDoc] = useState<DocItem | null>(null);
@@ -98,6 +100,7 @@ export default function DocsPage({ projectId }: DocsPageProps) {
       <DocEditor
         projectId={projectId}
         doc={activeDoc}
+        readOnly={readOnly}
         onBack={() => setActiveDoc(null)}
       />
     );
@@ -110,7 +113,7 @@ export default function DocsPage({ projectId }: DocsPageProps) {
           <h1 className="text-2xl font-semibold">Docs</h1>
           <p className="text-sm text-white/60">Knowledge base & documentation</p>
         </div>
-        <Button onClick={() => setCreateOpen(true)}>
+        <Button onClick={() => setCreateOpen(true)} disabled={readOnly} title={readOnly ? "Investor hanya bisa memantau" : undefined}>
           <Plus size={16} /> New Doc
         </Button>
       </header>
@@ -165,12 +168,14 @@ export default function DocsPage({ projectId }: DocsPageProps) {
               >
                 <div className="flex items-start justify-between mb-2">
                   <FileText size={20} className="text-blue-400 shrink-0" />
+                  {!readOnly && (
                   <button
                     onClick={(e) => { e.stopPropagation(); handleDelete(d.id); }}
                     className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-300 transition"
                   >
                     <Trash2 size={14} />
                   </button>
+                  )}
                 </div>
                 <h3 className="font-medium truncate mb-1">{d.title}</h3>
                 <div className="flex items-center justify-between">

@@ -7,6 +7,7 @@ import { Trash2, Plus, SquareCheckBig, Search, List } from "lucide-react";
 import AddTaskRow from "./AddTaskRow";
 import EditableTaskRow from "./EditableTaskRow";
 import { toast } from "sonner";
+import { useCurrentUser } from "@/lib/hooks/useCurrentUser";
 import {
   Select,
   SelectTrigger,
@@ -29,6 +30,7 @@ interface TaskFilters {
 }
 
 export default function TaskPage({ projectId }: TaskPageProps) {
+  const readOnly = useCurrentUser()?.role === "investor";
   const [serverTasks, setServerTasks] = useState<Task[]>([]);
   const [pendingTasks, setPendingTasks] = useState<Task[]>([]);
   const [projectCategories, setProjectCategories] = useState<string[]>([]);
@@ -330,7 +332,8 @@ export default function TaskPage({ projectId }: TaskPageProps) {
               </Select>
             </div>
 
-            {/* ACTIONS */}
+            {/* ACTIONS — disembunyikan untuk investor (read-only) */}
+            {!readOnly && (
             <div className="flex gap-2 mb-4">
               <Button onClick={() => setCreatingRow((s) => !s)}>
                 <Plus size={16} /> Add Task
@@ -339,6 +342,7 @@ export default function TaskPage({ projectId }: TaskPageProps) {
                 <Trash2 size={16} /> Delete ({selected.size})
               </Button>
             </div>
+            )}
 
             {/* TABLE */}
             <motion.div layout className="overflow-x-auto rounded-xl border border-white/10">
@@ -356,7 +360,7 @@ export default function TaskPage({ projectId }: TaskPageProps) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/10">
-                  {creatingRow && (
+                  {creatingRow && !readOnly && (
                     <AddTaskRow
                       projectMembers={members}
                       projectCategories={projectCategories}
@@ -379,6 +383,7 @@ export default function TaskPage({ projectId }: TaskPageProps) {
                         projectCategories={projectCategories}
                         toggleSelect={toggleSelect}
                         selected={selected}
+                        readOnly={readOnly}
                       />
                     ))
                   )}

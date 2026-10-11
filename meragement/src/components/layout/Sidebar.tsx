@@ -27,6 +27,7 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
   const user = useCurrentUser();
   const [isClient, setIsClient] = useState<boolean>(false);
   const isAdmin = user?.role === "admin";
+  const readOnly = user?.role === "investor";
   const [spaces, setSpaces] = useState<SidebarSpace[]>([]);
   const [openSpaces, setOpenSpaces] = useState<Record<string, boolean>>({});
   const [spaceLists, setSpaceLists] = useState<Record<string, SpaceList[]>>({}); // { [projectId]: List[] }
@@ -240,6 +241,7 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
                     <div className="mt-1 mb-1">
                       <div className="flex items-center justify-between px-3 py-1">
                         <span className="text-xs text-white/40 uppercase tracking-wider">Lists</span>
+                        {!readOnly && (
                         <button
                           onClick={() => setCreateListFor(space.id)}
                           className="text-white/40 hover:text-white transition"
@@ -247,6 +249,7 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
                         >
                           <Plus size={12} />
                         </button>
+                        )}
                       </div>
                       {(spaceLists[space.id] || []).map((list) => (
                         <NavItem
