@@ -1,5 +1,5 @@
-// src/components/auth/LoginForm.tsx — P0-migrasi: login via better-auth (cookie session).
-// Tidak ada lagi firebase/auth, localStorage, atau delay artifisial.
+// src/components/auth/LoginForm.tsx — login via better-auth (cookie session).
+// Tidak ada lagi delay artifisial.
 import { useEffect, useState, type FormEvent, type JSX } from "react";
 import { motion } from "framer-motion";
 import { authClient } from "@/lib/auth-client";

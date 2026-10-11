@@ -1,20 +1,39 @@
-// src/pages/TeamsPage.tsx
+// src/components/layout/TeamsContent.tsx — daftar teams via /api/teams.
+// Menampilkan nama member (bukan cuma roles) — temuan audit integrasi.
 import { useEffect, useState, type JSX } from "react";
-import { getTeams } from "@/lib/api/teams";
+import { apiGet } from "@/lib/api-client";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { motion } from "framer-motion";
 import { Users, Briefcase } from "lucide-react";
-import type { Team } from "@/lib/types";
+
+interface TeamMemberView {
+  userId: string;
+  roles: string[];
+  name?: string;
+  email?: string;
+}
+
+interface TeamView {
+  id: string;
+  name: string;
+  description?: string;
+  members?: TeamMemberView[];
+}
 
 export default function TeamsPage(): JSX.Element {
-    const [teams, setTeams] = useState<Team[]>([]);
+    const [teams, setTeams] = useState<TeamView[]>([]);
 
     useEffect(() => {
-        async function fetchTeams() {
-        const data = await getTeams();
-        setTeams(data);
-        }
-        fetchTeams();
+        let cancelled = false;
+        (async () => {
+            try {
+                const data = await apiGet<TeamView[]>("/api/teams");
+                if (!cancelled) setTeams(data);
+            } catch {
+                if (!cancelled) setTeams([]);
+            }
+        })();
+        return () => { cancelled = true; };
     }, []);
 
     return (
@@ -39,11 +58,12 @@ export default function TeamsPage(): JSX.Element {
                     <Users size={16} className="text-white/60" />
                     <span className="text-sm">{team.members?.length || 0} Members</span>
                 </div>
-                {/* List roles per member */}
+                {/* List member: nama + roles */}
                 <div className="mt-2 flex flex-wrap gap-1">
                     {team.members?.map((member, idx) => (
                     <div key={idx} className="bg-white/10 text-white/90 rounded-md px-2 py-0.5 text-xs">
-                        {member.roles.join(", ")}
+                        {member.name || member.email || member.userId}
+                        {member.roles.length > 0 && ` (${member.roles.join(", ")})`}
                     </div>
                     ))}
                 </div>

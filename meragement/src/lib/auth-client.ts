@@ -1,5 +1,5 @@
-// src/lib/auth-client.ts — better-auth client (pangganti firebase/auth di sisi UI).
-// Pakai hooks React: useSession() — pengganti onAuthStateChanged.
+// src/lib/auth-client.ts — better-auth client untuk sisi UI.
+// Pakai hooks React: useSession().
 import { createAuthClient } from "better-auth/react";
 import { inferAdditionalFields } from "better-auth/client/plugins";
 import type { auth } from "./auth";

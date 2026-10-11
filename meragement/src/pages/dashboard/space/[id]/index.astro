@@ -5,7 +5,7 @@ export const prerender = false;
 import DashboardLayout from "@/layouts/DashboardLayout.astro";
 import DashboardPage from "@/components/space/dashboard/DashboardPage";
 
-const { id } = Astro.params;
+const id = Astro.params.id ?? "";
 ---
 <!-- <DashboardLayout title={`Dashboard ${id ? `- Space ${id}` : ""}`}> -->
 <DashboardLayout title={`Dashboard ${id ? `- Space ${id}` : ""}`}>

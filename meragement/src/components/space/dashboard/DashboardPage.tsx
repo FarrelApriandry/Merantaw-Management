@@ -1,7 +1,5 @@
-import { useEffect, useMemo, useState, type ComponentType, type ReactNode } from "react";
-import { doc, getDoc, collection, onSnapshot, type Unsubscribe } from "firebase/firestore";
-import { db } from "@/lib/firebaseConfig";
-import { onListsSnapshot, onDocsSnapshot, onDiscussionsSnapshot } from "@/lib/firestore";
+import { useEffect, useState, type ComponentType, type ReactNode } from "react";
+import { apiGet } from "@/lib/api-client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -12,6 +10,16 @@ import {
 import { motion } from "framer-motion";
 import type { Project, Task, SpaceList, DocItem, Discussion } from "@/lib/types";
 
+interface Overview {
+  project: Project;
+  lists: (SpaceList & { taskCount: number })[];
+  taskStats: { total: number; done: number; rate: number };
+  docStats: { total: number; gdd: number; srs: number; wiki: number };
+  discStats: { total: number; solved: number };
+  recentDocs: Pick<DocItem, "id" | "title" | "category">[];
+  recentDiscussions: Pick<Discussion, "id" | "title" | "status">[];
+}
+
 const stagger = { hidden: {}, visible: { transition: { staggerChildren: 0.08 } } };
 const fadeUp = { hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0 } };
 
@@ -20,92 +28,33 @@ export interface DashboardPageProps {
 }
 
 export default function DashboardPage({ projectId }: DashboardPageProps) {
-  const [project, setProject] = useState<Project | null>(null);
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [lists, setLists] = useState<SpaceList[]>([]);
-  const [docs, setDocs] = useState<DocItem[]>([]);
-  const [discussions, setDiscussions] = useState<Discussion[]>([]);
+  const [overview, setOverview] = useState<Overview | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  const [tasksByList, setTasksByList] = useState<Record<string, Task[]>>({});
 
-  // Fetch project
+  // Satu panggilan /overview (poll 15s pengganti 1+N onSnapshot)
   useEffect(() => {
     if (!projectId) return;
-    (async () => {
+    let cancelled = false;
+    const load = async (): Promise<void> => {
       try {
-        const snap = await getDoc(doc(db, "projects", projectId));
-        if (snap.exists()) setProject({ id: snap.id, ...(snap.data() as object) } as Project);
+        const data = await apiGet<Overview>(`/api/projects/${projectId}/overview`);
+        if (!cancelled) { setOverview(data); setLoading(false); }
       } catch {
-        // read-only fetch, silence
+        if (!cancelled) setLoading(false);
       }
-    })();
+    };
+    void load();
+    const t = setInterval(() => void load(), 15000);
+    return () => { cancelled = true; clearInterval(t); };
   }, [projectId]);
 
-  // Fetch lists + tasks
-  useEffect(() => {
-    if (!projectId) return;
-    let listUnsubs: Unsubscribe[] = [];
-
-    const unsubLists = onListsSnapshot(projectId, (fetchedLists) => {
-      setLists(fetchedLists);
-      listUnsubs.forEach((u) => u());
-      listUnsubs = [];
-
-      if (!fetchedLists.length) { setTasks([]); setLoading(false); return; }
-
-      const byList: Record<string, Task[]> = {};
-      fetchedLists.forEach((list) => {
-        const colRef = collection(db, `projects/${projectId}/lists/${list.id}/tasks`);
-        const unsub = onSnapshot(colRef, (snap) => {
-          byList[list.id] = snap.docs.map((d) => ({ id: d.id, ...(d.data() as object) }) as Task);
-          setTasksByList({ ...byList });
-          setTasks(Object.values(byList).flat());
-          setLoading(false);
-        });
-        listUnsubs.push(unsub);
-      });
-    });
-
-    return () => { unsubLists(); listUnsubs.forEach((u) => u()); };
-  }, [projectId]);
-
-  // Fetch docs
-  useEffect(() => {
-    if (!projectId) return;
-    return onDocsSnapshot(projectId, setDocs);
-  }, [projectId]);
-
-  // Fetch discussions
-  useEffect(() => {
-    if (!projectId) return;
-    return onDiscussionsSnapshot(projectId, setDiscussions);
-  }, [projectId]);
-
-  // Aggregated stats
-  const taskStats = useMemo(() => {
-    const total = tasks.length;
-    const done = tasks.filter((t) => t.status === "done").length;
-    return { total, done, rate: total > 0 ? Math.round((done / total) * 100) : 0 };
-  }, [tasks]);
-
-  const docStats = useMemo(() => ({
-    total: docs.length,
-    gdd: docs.filter((d) => d.category === "GDD").length,
-    srs: docs.filter((d) => d.category === "SRS").length,
-    wiki: docs.filter((d) => d.category === "Wiki").length,
-  }), [docs]);
-
-  const discStats = useMemo(() => ({
-    total: discussions.length,
-    solved: discussions.filter((d) => d.status === "solved").length,
-  }), [discussions]);
-
-  const recentDocs = useMemo(() => docs.slice(0, 5), [docs]);
-  const recentDiscussions = useMemo(() => discussions.slice(0, 5), [discussions]);
-
-  const listCounts = useMemo(() =>
-    lists.map((l) => ({ ...l, count: (tasksByList[l.id] || []).length })),
-  [lists, tasksByList]);
+  const project = overview?.project ?? null;
+  const taskStats = overview?.taskStats ?? { total: 0, done: 0, rate: 0 };
+  const docStats = overview?.docStats ?? { total: 0, gdd: 0, srs: 0, wiki: 0 };
+  const discStats = overview?.discStats ?? { total: 0, solved: 0 };
+  const listCounts = overview?.lists ?? [];
+  const recentDocs = overview?.recentDocs ?? [];
+  const recentDiscussions = overview?.recentDiscussions ?? [];
 
   if (loading) {
     return <div className="p-6 text-white text-center">Loading dashboard...</div>;
@@ -192,7 +141,7 @@ export default function DashboardPage({ projectId }: DashboardPageProps) {
                   className="flex items-center justify-between p-2 rounded-lg hover:bg-white/5 transition"
                 >
                   <span className="text-sm">{l.name}</span>
-                  <Badge className="bg-white/10 text-white/70 text-xs">{l.count}</Badge>
+                  <Badge className="bg-white/10 text-white/70 text-xs">{l.taskCount}</Badge>
                 </a>
               ))
             )}

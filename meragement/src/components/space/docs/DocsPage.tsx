@@ -6,7 +6,7 @@ import { Plus, FileText, Trash2, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { onDocsSnapshot, createDoc, deleteDocument } from "@/lib/firestore";
+import { apiGet, apiPost, apiDelete } from "@/lib/api-client";
 import DocEditor from "./DocEditor";
 import { getTemplate } from "./templates";
 import {
@@ -45,11 +45,18 @@ export default function DocsPage({ projectId }: DocsPageProps) {
 
   useEffect(() => {
     if (!projectId) return;
-    const unsub = onDocsSnapshot(projectId, (list) => {
-      setDocs(list);
-      setLoading(false);
-    });
-    return () => unsub();
+    let cancelled = false;
+    const load = async (): Promise<void> => {
+      try {
+        const list = await apiGet<DocItem[]>(`/api/projects/${projectId}/docs`);
+        if (!cancelled) setDocs(list);
+      } catch { /* abaikan */ } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    void load();
+    const t = setInterval(() => void load(), 10000);
+    return () => { cancelled = true; clearInterval(t); };
   }, [projectId]);
 
   const filtered = docs.filter((d) => {
@@ -62,11 +69,10 @@ export default function DocsPage({ projectId }: DocsPageProps) {
     if (!newTitle.trim()) return;
     try {
       const content = getTemplate(newCategory, newTitle.trim());
-      const ref = await createDoc(projectId, {
+      const ref = await apiPost<{ id: string }>(`/api/projects/${projectId}/docs`, {
         title: newTitle.trim(),
         content,
         category: newCategory,
-        updatedBy: "",
       });
       setNewTitle("");
       setCreateOpen(false);
@@ -79,7 +85,8 @@ export default function DocsPage({ projectId }: DocsPageProps) {
   const handleDelete = async (docId: string): Promise<void> => {
     if (!confirm(`Delete this document?`)) return;
     try {
-      await deleteDocument(projectId, docId);
+      await apiDelete(`/api/projects/${projectId}/docs/${docId}`);
+      setDocs((prev) => prev.filter((d) => d.id !== docId));
       if (activeDoc?.id === docId) setActiveDoc(null);
     } catch {
       toast.error("Failed to delete document");

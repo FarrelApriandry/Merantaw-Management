@@ -1,12 +1,9 @@
-// Central domain types — replaces src/lib/types.js (JSDoc typedefs)
-// All Firestore-backed models include `id` (doc id). Timestamps may be
-// Firestore Timestamp, JS Date, or plain { seconds } shape from cache.
-import type { Timestamp } from "firebase/firestore";
-
+// Central domain types — API Postgres (Drizzle) + kompatibel sisa Firestore lama.
+// Setelah migrasi penuh, semua timestamp = ISO string dari JSON (atau Date lokal).
 export type FirestoreTimestampLike =
-  | Timestamp
   | Date
   | { seconds: number; nanoseconds?: number }
+  | { toDate?: () => Date }
   | string
   | number
   | null
@@ -149,9 +146,9 @@ export function toDateSafe(val: FirestoreTimestampLike): Date | null {
     const s = (val as { seconds: number }).seconds;
     if (typeof s === "number") return new Date(s * 1000);
   }
-  if (typeof (val as Timestamp)?.toDate === "function") {
+  if (typeof (val as { toDate?: unknown })?.toDate === "function") {
     try {
-      return (val as Timestamp).toDate();
+      return (val as { toDate: () => Date }).toDate();
     } catch {
       return null;
     }

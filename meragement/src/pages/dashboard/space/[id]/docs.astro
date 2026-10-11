@@ -4,7 +4,7 @@ export const prerender = false;
 import DocsPage from "@/components/space/docs/DocsPage";
 import DashboardLayout from "@/layouts/DashboardLayout.astro";
 
-const { id } = Astro.params;
+const id = Astro.params.id ?? "";
 ---
 <DashboardLayout title={`Docs ${id ? `- Space ${id}` : ""}`}>
     <DocsPage projectId={id} client:load />

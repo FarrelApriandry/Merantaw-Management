@@ -15,7 +15,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { onDiscussionsSnapshot, createDiscussion } from "@/lib/firestore";
+import { apiGet, apiPost } from "@/lib/api-client";
 import DiscussionThread from "./DiscussionThread";
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser";
 import type { Discussion } from "@/lib/types";
@@ -34,27 +34,34 @@ export default function DiscussionsPage({ projectId }: DiscussionsPageProps) {
 
   const currentUser = useCurrentUser();
 
+  const load = async (): Promise<void> => {
+    try {
+      const list = await apiGet<Discussion[]>(`/api/projects/${projectId}/discussions`);
+      setDiscussions(list);
+    } catch {
+      /* abaikan */
+    } finally {
+      setLoading(false);
+    }
+  };
   useEffect(() => {
     if (!projectId) return;
-    const unsub = onDiscussionsSnapshot(projectId, (list) => {
-      setDiscussions(list);
-      setLoading(false);
-    });
-    return () => unsub();
+    void load();
+    const t = setInterval(() => void load(), 10000);
+    return () => clearInterval(t);
   }, [projectId]);
 
   const handleCreate = async (): Promise<void> => {
     if (!newTitle.trim() || !newContent.trim()) return;
     try {
-      await createDiscussion(projectId, {
+      const created = await apiPost<Discussion>(`/api/projects/${projectId}/discussions`, {
         title: newTitle.trim(),
         content: newContent.trim(),
-        authorId: currentUser?.uid || "",
-        authorName: currentUser?.name || currentUser?.email || "Anonymous",
       });
       setNewTitle("");
       setNewContent("");
       setCreateOpen(false);
+      setDiscussions((prev) => [created, ...prev]);
     } catch {
       toast.error("Failed to create discussion");
     }

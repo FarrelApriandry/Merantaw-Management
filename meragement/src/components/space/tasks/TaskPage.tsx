@@ -1,7 +1,5 @@
-import { useEffect, useState, useCallback, useMemo } from "react";
-import { doc, getDoc } from "firebase/firestore";
-import { db } from "@/lib/firebaseConfig";
-import { onTasksSnapshot, onListsSnapshot, createTask, batchDeleteTasks } from "@/lib/firestore";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import { apiGet, apiPost, apiDelete } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { motion, AnimatePresence } from "framer-motion";
@@ -58,55 +56,73 @@ export default function TaskPage({ projectId }: TaskPageProps) {
     if (listParam) setActiveListId(listParam);
   }, []);
 
-  // Fetch project & members
+  // Fetch project & members via API
   useEffect(() => {
     if (!projectId) return;
+    let cancelled = false;
     (async () => {
-      const snap = await getDoc(doc(db, "projects", projectId));
-      if (!snap.exists()) return;
-      const data = { id: snap.id, ...(snap.data() as object) } as Project;
-      setProject(data);
-
-      const ids: string[] = data.assignedUsers || [];
-      const results = await Promise.all(
-        ids.map((uid) => getDoc(doc(db, "users", uid)))
-      );
-      setMembers(
-        results
-          .filter((r) => r.exists())
-          .map((r) => ({ id: r.id, ...((r.data() as object) || {}) }) as AppUser)
-      );
+      try {
+        const [proj, mems] = await Promise.all([
+          apiGet<Project>(`/api/projects/${projectId}`),
+          apiGet<AppUser[]>(`/api/projects/${projectId}/members`).catch(() => [] as AppUser[]),
+        ]);
+        if (cancelled) return;
+        setProject(proj);
+        setMembers(mems);
+      } catch {
+        /* abaikan — tampilkan state kosong */
+      }
     })();
+    return () => { cancelled = true; };
   }, [projectId]);
 
-  // Subscribe to lists
+  // Lists via API (poll 10s pengganti onSnapshot)
+  const activeListIdRef = useRef<string | null>(null);
+  activeListIdRef.current = activeListId;
   useEffect(() => {
     if (!projectId) return;
-    const unsub = onListsSnapshot(projectId, (data) => {
-      setLists(data);
-      // Auto-select first list if none selected
-      if (!activeListId && data.length > 0) {
-        setActiveListId(data[0].id);
+    let cancelled = false;
+    const load = async (): Promise<void> => {
+      try {
+        const data = await apiGet<SpaceList[]>(`/api/projects/${projectId}/lists`);
+        if (cancelled) return;
+        setLists(data);
+        if (!activeListIdRef.current && data.length > 0) {
+          setActiveListId(data[0].id);
+        }
+      } catch {
+        /* abaikan */
       }
-    });
-    return () => unsub();
+    };
+    void load();
+    const t = setInterval(() => void load(), 10000);
+    return () => { cancelled = true; clearInterval(t); };
   }, [projectId]);
 
-  // Realtime tasks scoped to activeListId
+  // Tasks per activeList (poll 10s pengganti onSnapshot)
   useEffect(() => {
     if (!projectId || !activeListId) {
       setServerTasks([]);
       setLoading(false);
       return;
     }
+    let cancelled = false;
     setLoading(true);
-    const unsub = onTasksSnapshot(projectId, activeListId, (taskList) => {
-      setServerTasks(taskList);
-      setLoading(false);
-      const cats = [...new Set(taskList.flatMap((t) => t.category || []))];
-      setProjectCategories(cats);
-    });
-    return () => unsub();
+    const load = async (): Promise<void> => {
+      try {
+        const taskList = await apiGet<Task[]>(`/api/projects/${projectId}/lists/${activeListId}/tasks`);
+        if (cancelled) return;
+        setServerTasks(taskList);
+        setLoading(false);
+        const cats = [...new Set(taskList.flatMap((t) => t.category || []))];
+        setProjectCategories(cats);
+      } catch {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    void load();
+    const t = setInterval(() => void load(), 10000);
+    return () => { cancelled = true; clearInterval(t); };
   }, [projectId, activeListId]);
 
   // Switch list
@@ -131,8 +147,13 @@ export default function TaskPage({ projectId }: TaskPageProps) {
       setPendingTasks((prev) => [{ id: tempId, ...payload } as Task, ...prev]);
 
       try {
-        await createTask(projectId, activeListId, payload);
+        await apiPost(`/api/projects/${projectId}/lists/${activeListId}/tasks`, payload);
         setPendingTasks((prev) => prev.filter((t) => t.id !== tempId));
+        // Refresh cepat tanpa nunggu poll
+        try {
+          const fresh = await apiGet<Task[]>(`/api/projects/${projectId}/lists/${activeListId}/tasks`);
+          setServerTasks(fresh);
+        } catch { /* next poll */ }
       } catch (err) {
         // P2: rollback benar — hapus pending tempId, lempar ulang agar AddTaskRow tidak toast success palsu.
         // Toast success/error ditangani AddTaskRow (satu sumber) agar tidak double.
@@ -148,8 +169,13 @@ export default function TaskPage({ projectId }: TaskPageProps) {
     if (!selected.size || !activeListId) return;
     if (!confirm(`Delete ${selected.size} task(s)?`)) return;
     try {
-      await batchDeleteTasks(projectId, activeListId, Array.from(selected));
+      const ids = Array.from(selected).join(",");
+      await apiDelete(`/api/projects/${projectId}/lists/${activeListId}/tasks?ids=${ids}`);
       setSelected(new Set());
+      try {
+        const fresh = await apiGet<Task[]>(`/api/projects/${projectId}/lists/${activeListId}/tasks`);
+        setServerTasks(fresh);
+      } catch { /* next poll */ }
       toast.success("Tasks deleted");
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Gagal menghapus tasks";

@@ -1,7 +1,6 @@
 import { useEffect, useState, type JSX } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { motion } from "framer-motion";
-import { auth } from "@/lib/firebaseConfig";
 import type { InboxEmail } from "@/lib/types";
 
 export default function InboxContent(): JSX.Element {
@@ -10,13 +9,12 @@ export default function InboxContent(): JSX.Element {
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
+        let cancelled = false;
         (async () => {
             try {
-                // P0: kirim Firebase ID token — /api/inbox wajib Bearer auth
-                const idToken = await auth.currentUser?.getIdToken().catch(() => null);
-                const res = await fetch("/api/inbox", {
-                    headers: idToken ? { Authorization: `Bearer ${idToken}` } : {},
-                });
+                // Session terkirim otomatis via cookie better-auth — tanpa Bearer token.
+                const res = await fetch("/api/inbox");
+                if (cancelled) return;
                 if (res.status === 401) {
                     setError("Unauthorized — silakan login ulang.");
                     setEmails([]);
@@ -28,6 +26,7 @@ export default function InboxContent(): JSX.Element {
                     return;
                 }
                 const data = (await res.json()) as InboxEmail[] | { error?: string };
+                if (cancelled) return;
                 if (Array.isArray(data)) {
                     setEmails(data);
                 } else {
@@ -36,16 +35,19 @@ export default function InboxContent(): JSX.Element {
                     setEmails([]);
                 }
             } catch (err) {
-                console.error(err);
-                setError("Gagal memuat inbox.");
+                if (!cancelled) {
+                    console.error(err);
+                    setError("Gagal memuat inbox.");
+                }
             } finally {
-                setLoading(false);
+                if (!cancelled) setLoading(false);
             }
         })();
+        return () => { cancelled = true; };
     }, []);
 
     return (
-        <div className="gap-4 grid grid-cols-3 sm:grid-cols-2 lg:grid-cols-3 p-6">
+        <div className="gap-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 p-6">
             {loading && <div className="text-white/80">Loading emails...</div>}
             {!loading && error && <div className="text-red-300 text-sm">{error}</div>}
             {emails.map((email, idx) => (

@@ -2,9 +2,6 @@
 import { useState, useEffect, type ReactNode } from "react";
 import Sidebar from "./Sidebar";
 import Navbar from "./Navbar";
-import { doc, onSnapshot } from "firebase/firestore";
-import { db } from "@/lib/firebaseConfig";
-import type { Project } from "@/lib/types";
 
 export interface SidebarControllerProps {
   children: ReactNode;
@@ -21,14 +18,19 @@ export default function SidebarController({ children, Header }: SidebarControlle
         const spaceId = pathParts[pathParts.indexOf('space') + 1];
 
         if (spaceId) {
-            // P0: listen SATU doc saja, bukan collection(projects)
-            const unsub = onSnapshot(doc(db, "projects", spaceId), (snap) => {
-                if (snap.exists()) {
-                    const data = snap.data() as Partial<Project>;
-                    setActiveTitle("Project - " + (data.title ?? ""));
+            // Judul dari API (poll sekali; murah & tanpa realtime SDK)
+            let cancelled = false;
+            (async () => {
+                try {
+                    const res = await fetch(`/api/projects/${spaceId}`);
+                    if (!res.ok) return;
+                    const data = (await res.json()) as { title?: string };
+                    if (!cancelled && data.title) setActiveTitle("Project - " + data.title);
+                } catch {
+                    /* abaikan — pakai Header default */
                 }
-            });
-            return () => unsub();
+            })();
+            return () => { cancelled = true; };
         } else {
             setActiveTitle(Header);
         }

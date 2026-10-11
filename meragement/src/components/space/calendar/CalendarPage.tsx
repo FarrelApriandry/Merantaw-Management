@@ -3,9 +3,7 @@ import { Calendar, dateFnsLocalizer, type Event as RBCEvent } from "react-big-ca
 import _withDragAndDrop from "react-big-calendar/lib/addons/dragAndDrop";
 import { format, parse, startOfWeek, getDay } from "date-fns";
 import { id as idLocale } from "date-fns/locale/id";
-import { collection, onSnapshot, type Unsubscribe } from "firebase/firestore";
-import { db } from "@/lib/firebaseConfig";
-import { onListsSnapshot, onEventsSnapshot, createEvent, updateEvent, deleteEvent, updateTask } from "@/lib/firestore";
+import { apiGet, apiPost, apiPatch, apiDelete } from "@/lib/api-client";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
@@ -83,40 +81,40 @@ export default function CalendarPage({ projectId }: CalendarPageProps) {
   const [newTitle, setNewTitle] = useState<string>("");
   const [dropAnim, setDropAnim] = useState<string | null>(null);
 
-  // Fetch tasks across all lists (track listId per task)
+  // Tasks agregat lintas lists via /api (poll 15s pengganti N onSnapshot)
   useEffect(() => {
     if (!projectId) return;
-    let listUnsubs: Unsubscribe[] = [];
-
-    const unsubLists = onListsSnapshot(projectId, (lists: SpaceList[]) => {
-      listUnsubs.forEach((u) => u());
-      listUnsubs = [];
-      const byList: Record<string, Task[]> = {};
-      const listMap: Record<string, string> = {};
-
-      lists.forEach((list) => {
-        const colRef = collection(db, `projects/${projectId}/lists/${list.id}/tasks`);
-        const unsub = onSnapshot(colRef, (snap) => {
-          byList[list.id] = snap.docs.map((d) => {
-            listMap[d.id] = list.id;
-            return { id: d.id, ...(d.data() as object) } as Task;
-          });
-          setTaskListMap({ ...listMap });
-          setTasks(Object.values(byList).flat());
-        });
-        listUnsubs.push(unsub);
-      });
-
-      if (!lists.length) setTasks([]);
-    });
-
-    return () => { unsubLists(); listUnsubs.forEach((u) => u()); };
+    let cancelled = false;
+    const load = async (): Promise<void> => {
+      try {
+        const full = await apiGet<{ lists: SpaceList[]; tasks: (Task & { listId: string })[] }>(`/api/projects/${projectId}/tasks`);
+        const map: Record<string, string> = {};
+        for (const t of full.tasks) map[t.id] = t.listId;
+        if (cancelled) return;
+        setTaskListMap(map);
+        setTasks(full.tasks);
+      } catch {
+        /* abaikan */
+      }
+    };
+    void load();
+    const t = setInterval(() => void load(), 15000);
+    return () => { cancelled = true; clearInterval(t); };
   }, [projectId]);
 
-  // Fetch events
+  // Events via API (poll 15s)
   useEffect(() => {
     if (!projectId) return;
-    return onEventsSnapshot(projectId, setEvents);
+    let cancelled = false;
+    const load = async (): Promise<void> => {
+      try {
+        const data = await apiGet<CalEvent[]>(`/api/projects/${projectId}/events`);
+        if (!cancelled) setEvents(data);
+      } catch { /* abaikan */ }
+    };
+    void load();
+    const t = setInterval(() => void load(), 15000);
+    return () => { cancelled = true; clearInterval(t); };
   }, [projectId]);
 
   // Map to RBC format
@@ -167,9 +165,9 @@ export default function CalendarPage({ projectId }: CalendarPageProps) {
     const toastId = toast.loading("Syncing...");
     try {
       if (event.type === "task" && event.listId) {
-        await updateTask(projectId, event.listId, event.id, { dueDate: start });
+        await apiPatch(`/api/projects/${projectId}/lists/${event.listId}/tasks/${event.id}`, { dueDate: start });
       } else if (event.type === "event") {
-        await updateEvent(projectId, event.id, { start, end });
+        await apiPatch(`/api/projects/${projectId}/events/${event.id}`, { start, end });
       }
       setDropAnim(event.id);
       setTimeout(() => setDropAnim(null), 600);
@@ -184,9 +182,9 @@ export default function CalendarPage({ projectId }: CalendarPageProps) {
     const toastId = toast.loading("Syncing...");
     try {
       if (event.type === "event") {
-        await updateEvent(projectId, event.id, { start, end });
+        await apiPatch(`/api/projects/${projectId}/events/${event.id}`, { start, end });
       } else if (event.type === "task" && event.listId) {
-        await updateTask(projectId, event.listId, event.id, { dueDate: start });
+        await apiPatch(`/api/projects/${projectId}/lists/${event.listId}/tasks/${event.id}`, { dueDate: start });
       }
       setDropAnim(event.id);
       setTimeout(() => setDropAnim(null), 600);
@@ -206,7 +204,7 @@ export default function CalendarPage({ projectId }: CalendarPageProps) {
   const handleCreateEvent = async (): Promise<void> => {
     if (!newTitle.trim() || !newSlot) return;
     try {
-      await createEvent(projectId, {
+      await apiPost(`/api/projects/${projectId}/events`, {
         title: newTitle.trim(),
         start: newSlot.start,
         end: newSlot.end,
@@ -222,7 +220,7 @@ export default function CalendarPage({ projectId }: CalendarPageProps) {
   const handleDeleteEvent = async (): Promise<void> => {
     if (!selectedEvent || selectedEvent.type !== "event") return;
     try {
-      await deleteEvent(projectId, selectedEvent.id);
+      await apiDelete(`/api/projects/${projectId}/events/${selectedEvent.id}`);
       setSelectedEvent(null);
       toast.success("Event deleted");
     } catch {

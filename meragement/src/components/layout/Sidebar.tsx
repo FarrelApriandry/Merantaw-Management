@@ -7,11 +7,8 @@ import { useState, useEffect, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { collection, query, where, onSnapshot, type Unsubscribe } from "firebase/firestore";
-import { db } from "@/lib/firebaseConfig";
-import { getAuth, onAuthStateChanged } from "firebase/auth";
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser";
-import { onListsSnapshot, createList } from "@/lib/firestore";
+import { apiGet, apiPost } from "@/lib/api-client";
 import CreateListModal from "@/components/space/CreateListModal";
 import type { Project, SpaceList } from "@/lib/types";
 
@@ -44,72 +41,60 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
     if (typeof window !== "undefined") setCurrentPath(window.location.pathname);
   }, []);
 
-  // Firestore listener for projects
+  // Projects via API (poll 15s pengganti onSnapshot)
   useEffect(() => {
     if (!isClient || !user) return;
-    const auth = getAuth();
-
-    let unsubSnapshot: Unsubscribe | null = null;
-    const unsubscribeAuth = onAuthStateChanged(auth, (firebaseUser) => {
-      if (!firebaseUser) {
-        setSpaces([]);
+    let cancelled = false;
+    const scope = user.role === "admin" ? "all" : "mine";
+    const load = async (): Promise<void> => {
+      try {
+        const rows = await apiGet<Project[]>(`/api/projects?scope=${scope}`);
+        if (cancelled) return;
+        setSpaces(
+          rows.map((d) => ({
+            id: d.id,
+            shortCall: d.shortCall || "N/A",
+            title: d.title || "(no title)",
+          })),
+        );
+        setSpacesError(null);
         setLoadingSpaces(false);
-        return;
+      } catch (err) {
+        if (cancelled) return;
+        setSpaces([]);
+        setSpacesError(err instanceof Error ? err : new Error("failed"));
+        setLoadingSpaces(false);
       }
-
-      const userRole = user?.role || "user";
-      const q =
-        userRole === "admin"
-          ? collection(db, "projects")
-          : query(
-              collection(db, "projects"),
-              where("assignedUsers", "array-contains", firebaseUser.uid)
-            );
-
-      if (unsubSnapshot) unsubSnapshot();
-
-      unsubSnapshot = onSnapshot(
-        q,
-        (snapshot) => {
-          const projectList: SidebarSpace[] = snapshot.docs.map((d) => {
-            const data = d.data() as Partial<Project>;
-            return {
-              id: d.id,
-              shortCall: data.shortCall || "N/A",
-              title: data.title || "(no title)",
-            };
-          });
-          setSpaces(projectList);
-          setSpacesError(null);
-          setLoadingSpaces(false);
-        },
-        (error) => {
-          setSpaces([]);
-          setSpacesError(error as Error);
-          setLoadingSpaces(false);
-        }
-      );
-    });
-
+    };
+    void load();
+    const t = setInterval(() => void load(), 15000);
     return () => {
-      if (unsubSnapshot) unsubSnapshot();
-      unsubscribeAuth();
+      cancelled = true;
+      clearInterval(t);
     };
   }, [isClient, user?.uid, user?.role]);
 
-  // Subscribe to lists when a space is opened
+  // Fetch lists saat space dibuka (poll 15s)
   useEffect(() => {
-    const unsubs: Unsubscribe[] = [];
+    const timers: ReturnType<typeof setInterval>[] = [];
+    let cancelled = false;
     Object.keys(openSpaces).forEach((spaceId) => {
       if (!openSpaces[spaceId]) return;
-      if (spaceLists[spaceId]) return; // already subscribed
-
-      const unsub = onListsSnapshot(spaceId, (lists) => {
-        setSpaceLists((prev) => ({ ...prev, [spaceId]: lists }));
-      });
-      unsubs.push(unsub);
+      const load = async (): Promise<void> => {
+        try {
+          const data = await apiGet<SpaceList[]>(`/api/projects/${spaceId}/lists`);
+          if (!cancelled) setSpaceLists((prev) => ({ ...prev, [spaceId]: data }));
+        } catch {
+          /* abaikan — tampilkan cache lama */
+        }
+      };
+      void load();
+      timers.push(setInterval(() => void load(), 15000));
     });
-    return () => unsubs.forEach((u) => u());
+    return () => {
+      cancelled = true;
+      timers.forEach((t) => clearInterval(t));
+    };
   }, [openSpaces]);
 
   const toggleSpace = (id: string): void =>
@@ -122,7 +107,11 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
     if (!projectId) return;
     try {
       const existing = spaceLists[projectId] || [];
-      await createList(projectId, { ...data, order: existing.length });
+      const created = await apiPost<SpaceList>(`/api/projects/${projectId}/lists`, {
+        ...data,
+        order: existing.length,
+      });
+      setSpaceLists((prev) => ({ ...prev, [projectId]: [...(prev[projectId] || []), created] }));
       setCreateListFor(null);
     } catch {
       toast.error("Failed to create list");

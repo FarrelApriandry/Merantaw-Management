@@ -1,15 +1,6 @@
 // src/components/forms/AddProjectForm.tsx
 import { useState, useEffect, type FormEvent, type ChangeEvent, type JSX } from "react";
-import { onAuthStateChanged } from "firebase/auth";
-import { db, auth, getEmailAuth } from "@/lib/firebaseConfig";
-import {
-    collection,
-    addDoc,
-    getDocs,
-    doc,
-    getDoc,
-    serverTimestamp,
-} from "firebase/firestore";
+import { apiGet, apiPost } from "@/lib/api-client";
 import {
     Card,
     CardHeader,
@@ -54,52 +45,35 @@ export default function AddProjectForm(): JSX.Element {
     });
 
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                // Fetch teams
-                const teamsSnapshot = await getDocs(collection(db, "teams"));
-                const teamsList = teamsSnapshot.docs.map((d) => ({
-                    id: d.id,
-                    ...(d.data() as object),
-                }) as Team);
-                setTeams(teamsList);
-    
-                // Fetch users
-                const usersSnapshot = await getDocs(collection(db, "users_public"));
-                const usersList = usersSnapshot.docs.map((d) => ({
-                    id: d.id,
-                    ...(d.data() as object),
-                }) as AppUser);
-                setUsers(usersList);
+        let cancelled = false;
+        (async () => {
+            try {
+                const [teamsList, usersList] = await Promise.all([
+                    apiGet<Team[]>("/api/teams"),
+                    apiGet<AppUser[]>("/api/users"),
+                ]);
+                if (!cancelled) { setTeams(teamsList); setUsers(usersList); }
+            } catch {
+                toast.error("Gagal memuat teams/users.");
             }
-        });
-        return () => unsubscribe();
+        })();
+        return () => { cancelled = true; };
     }, []);    
 
     const handleChange = (e: ChangeEvent<HTMLInputElement>): void => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
-    const handleTeamSelect = async (teamId: string): Promise<void> => {
-        setFormData({ ...formData, teamId });
-        const teamRef = doc(db, "teams", teamId);
-        const teamSnap = await getDoc(teamRef);
-        if (teamSnap.exists()) {
-        const teamData = teamSnap.data() as Team;
-        const memberIds = (teamData.members || []).map((m) => m.userId);
-        setFormData((prev) => ({ ...prev, assignedUsers: memberIds }));
-        }
+    const handleTeamSelect = (teamId: string): void => {
+        const team = teams.find((t) => t.id === teamId);
+        const memberIds = (team?.members || []).map((m) => m.userId);
+        setFormData((prev) => ({ ...prev, teamId, assignedUsers: memberIds }));
     };
 
     const handleSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
         e.preventDefault();
         try {
-        await addDoc(collection(db, "projects"), {
-            ...formData,
-            createdBy: getEmailAuth(),
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
-        });
+        await apiPost("/api/projects", formData);
         toast.success("✅ Project created successfully!");
         setFormData({
             title: "",

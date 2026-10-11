@@ -1,9 +1,11 @@
-// src/pages/api/inbox.ts — P2: verifikasi Firebase ID token (firebase-admin) + legacy token.
-// - Terima Bearer <Firebase ID token> yang valid (verifyIdToken) ATAU legacy INBOX_API_TOKEN.
+// src/pages/api/inbox.ts — inbox Gmail via IMAP (server-side).
+// Auth: cookie session better-auth (requireUser). Legacy INBOX_API_TOKEN dipertahankan
+// untuk pemanggil non-browser (cron/internal) bila dikonfigurasi.
 // - Secret HANYA dari server env (tanpa prefix PUBLIC_).
 // - TLS verify ON, batasi search, pastikan connection.end()
 import Imap from "imap-simple";
 import type { InboxEmail } from "@/lib/types";
+import { requireUser, json as jsonRes } from "@/lib/server-auth";
 
 interface ImapHeader {
   from?: string[];
@@ -24,42 +26,7 @@ const HEADER_KEY = "HEADER.FIELDS (FROM TO SUBJECT DATE)";
 const MAX_RESULTS = 15;
 
 function json(body: unknown, status: number): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
-  });
-}
-
-type AdminAuthLike = { verifyIdToken: (token: string) => Promise<unknown> };
-
-let adminAuthPromise: Promise<AdminAuthLike | null> | null = null;
-
-async function getAdminAuth(): Promise<AdminAuthLike | null> {
-  if (adminAuthPromise) return adminAuthPromise;
-  adminAuthPromise = (async () => {
-    try {
-      const appMod = await import("firebase-admin/app");
-      const authMod = await import("firebase-admin/auth");
-      const apps = appMod.getApps();
-      if (apps.length === 0) {
-        // Prefer explicit service-account JSON bila tersedia (Vercel env),
-        // fallback ke applicationDefault() (GOOGLE_APPLICATION_CREDENTIALS).
-        const raw =
-          (typeof process !== "undefined" && process.env.FIREBASE_SERVICE_ACCOUNT_JSON) ||
-          undefined;
-        if (raw) {
-          const cred = JSON.parse(raw) as Parameters<typeof appMod.cert>[0];
-          appMod.initializeApp({ credential: appMod.cert(cred) });
-        } else {
-          appMod.initializeApp();
-        }
-      }
-      return authMod.getAuth() as unknown as AdminAuthLike;
-    } catch {
-      return null;
-    }
-  })();
-  return adminAuthPromise;
+  return jsonRes(body, status);
 }
 
 function getServerEnv(name: string): string | undefined {
@@ -74,22 +41,13 @@ function getBearerToken(req: Request): string {
 }
 
 async function assertAuthorized(req: Request): Promise<boolean> {
+  // Jalur utama: cookie session better-auth (browser fetch tanpa header khusus).
+  if (await requireUser(req)) return true;
+  // Jalur legacy: service token untuk pemanggil non-browser bila dikonfigurasi.
   const token = getBearerToken(req);
   if (!token) return false;
-  // P2: legacy service token — samakan dengan INBOX_API_TOKEN server-side.
-  const expected =
-    (typeof process !== "undefined" && process.env.INBOX_API_TOKEN) ||
-    (import.meta.env.INBOX_API_TOKEN as string | undefined);
-  if (expected && token === expected) return true;
-  // P2: Firebase ID token dari client (auth.currentUser.getIdToken()).
-  try {
-    const adminAuth = await getAdminAuth();
-    if (!adminAuth) return false;
-    await adminAuth.verifyIdToken(token);
-    return true;
-  } catch {
-    return false;
-  }
+  const expected = getServerEnv("INBOX_API_TOKEN");
+  return !!expected && token === expected;
 }
 
 export async function GET({ request }: { request: Request }): Promise<Response> {

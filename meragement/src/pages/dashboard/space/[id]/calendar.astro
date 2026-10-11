@@ -4,7 +4,7 @@ export const prerender = false;
 import CalendarPage from "@/components/space/calendar/CalendarPage";
 import DashboardLayout from "@/layouts/DashboardLayout.astro";
 
-const { id } = Astro.params;
+const id = Astro.params.id ?? "";
 ---
 <DashboardLayout title={`Calendar ${id ? `- Space ${id}` : ""}`}>
     <CalendarPage projectId={id} client:only="react" />

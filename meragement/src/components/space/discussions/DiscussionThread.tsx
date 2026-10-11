@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, CheckCircle2, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { onRepliesSnapshot, createReply, markAsSolution } from "@/lib/firestore";
+import { apiGet, apiPost, apiPatch } from "@/lib/api-client";
 import { toast } from "sonner";
 import type { Discussion, Reply, StoredUser } from "@/lib/types";
 
@@ -25,8 +25,16 @@ export default function DiscussionThread({ projectId, discussion, currentUser, o
   const isAuthor = !!currentUser?.uid && currentUser.uid === discussion.authorId;
 
   useEffect(() => {
-    const unsub = onRepliesSnapshot(projectId, discussion.id, setReplies);
-    return () => unsub();
+    let cancelled = false;
+    const load = async (): Promise<void> => {
+      try {
+        const list = await apiGet<Reply[]>(`/api/projects/${projectId}/discussions/${discussion.id}/replies`);
+        if (!cancelled) setReplies(list);
+      } catch { /* abaikan */ }
+    };
+    void load();
+    const t = setInterval(() => void load(), 10000);
+    return () => { cancelled = true; clearInterval(t); };
   }, [projectId, discussion.id]);
 
   const handleReply = async (): Promise<void> => {
@@ -37,11 +45,11 @@ export default function DiscussionThread({ projectId, discussion, currentUser, o
     }
     setSending(true);
     try {
-      await createReply(projectId, discussion.id, {
-        content: replyContent.trim(),
-        authorId: currentUser.uid,
-        authorName: currentUser.name || currentUser.email || "Anonymous",
-      });
+      const created = await apiPost<Reply>(
+        `/api/projects/${projectId}/discussions/${discussion.id}/replies`,
+        { content: replyContent.trim() },
+      );
+      setReplies((prev) => [...prev, created]);
       setReplyContent("");
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Gagal mengirim balasan";
@@ -57,7 +65,10 @@ export default function DiscussionThread({ projectId, discussion, currentUser, o
       return;
     }
     try {
-      await markAsSolution(projectId, discussion.id, replyId, currentUser?.uid);
+      await apiPost(
+        `/api/projects/${projectId}/discussions/${discussion.id}/replies/${replyId}/solution`,
+      );
+      setReplies((prev) => prev.map((r) => ({ ...r, isSolution: r.id === replyId })));
       toast.success("Marked as solution!");
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Gagal menandai solusi";

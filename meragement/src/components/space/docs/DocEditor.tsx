@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { ArrowLeft, Save, Eye, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { updateDocContent } from "@/lib/firestore";
+import { apiPatch } from "@/lib/api-client";
 import { toast } from "sonner";
 import type { DocItem } from "@/lib/types";
 
@@ -26,7 +26,7 @@ export default function DocEditor({ projectId, doc, onBack }: DocEditorProps) {
   const save = useCallback(async (text: string): Promise<boolean> => {
     setSaving(true);
     try {
-      await updateDocContent(projectId, doc.id, { content: text });
+      await apiPatch(`/api/projects/${projectId}/docs/${doc.id}`, { content: text });
       return true;
     } catch {
       toast.error("Failed to save");

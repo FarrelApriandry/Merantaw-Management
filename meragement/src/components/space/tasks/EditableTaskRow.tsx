@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { updateTask } from "@/lib/firestore";
+import { apiPatch } from "@/lib/api-client";
 import { safeUrl, openSafeUrl } from "@/lib/safeUrl";
 import { Input } from "@/components/ui/input";
 import CategoryInput from "./CategoryInput";
@@ -46,7 +46,7 @@ export default function EditableTaskRow({
           return;
         }
       }
-      await updateTask(projectId, listId, task.id, { [field]: value });
+      await apiPatch(`/api/projects/${projectId}/lists/${listId}/tasks/${task.id}`, { [field]: value });
       toast.success("Task updated!", { description: `${field} updated` });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Unknown error";

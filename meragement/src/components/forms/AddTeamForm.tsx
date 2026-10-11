@@ -1,8 +1,6 @@
 // src/components/forms/AddTeamForm.tsx
 import { useState, useEffect, type FormEvent, type ChangeEvent, type JSX } from "react";
-import { onAuthStateChanged } from "firebase/auth";
-import { db, auth, getEmailAuth } from "@/lib/firebaseConfig";
-import { collection, addDoc, getDocs, serverTimestamp } from "firebase/firestore";
+import { apiGet, apiPost } from "@/lib/api-client";
 import {
   Card,
   CardHeader,
@@ -38,17 +36,16 @@ export default function AddTeamForm(): JSX.Element {
   });
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        const querySnapshot = await getDocs(collection(db, "users"));
-        const usersList = querySnapshot.docs.map((d) => ({
-          id: d.id,
-          ...(d.data() as object),
-        }) as AppUser);
-        setUsers(usersList);
+    let cancelled = false;
+    (async () => {
+      try {
+        const usersList = await apiGet<AppUser[]>("/api/users");
+        if (!cancelled) setUsers(usersList);
+      } catch {
+        toast.error("Gagal memuat users.");
       }
-    });
-    return () => unsubscribe();
+    })();
+    return () => { cancelled = true; };
   }, []);
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>): void => {
@@ -91,12 +88,7 @@ export default function AddTeamForm(): JSX.Element {
   const handleSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
     try {
-      await addDoc(collection(db, "teams"), {
-        ...formData,
-        createdBy: getEmailAuth(),
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
+      await apiPost("/api/teams", formData);
       toast.success("✅ Team created successfully!");
       setFormData({
         name: "",
