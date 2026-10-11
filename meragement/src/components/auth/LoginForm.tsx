@@ -1,19 +1,25 @@
-// src/components/auth/LoginForm.tsx
-import { toast } from "sonner";
+// src/components/auth/LoginForm.tsx — P0-migrasi: login via better-auth (cookie session).
+// Tidak ada lagi firebase/auth, localStorage, atau delay artifisial.
 import { useEffect, useState, type FormEvent, type JSX } from "react";
 import { motion } from "framer-motion";
-import { signInWithEmailAndPassword, onAuthStateChanged } from "firebase/auth";
-import { auth, db } from "@/lib/firebaseConfig";
+import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { doc, getDoc } from "firebase/firestore";
-import type { StoredUser } from "@/lib/types";
+import { toast } from "sonner";
 
 export default function LoginForm(): JSX.Element {
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [error, setError] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
+
+  // Sudah login → langsung dashboard
+  const { data: session, isPending } = authClient.useSession();
+  useEffect(() => {
+    if (!isPending && session?.user) {
+      window.location.href = "/dashboard/";
+    }
+  }, [isPending, session]);
 
   const handleLogin = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
@@ -23,82 +29,27 @@ export default function LoginForm(): JSX.Element {
     try {
       if (!email || !password) {
         setError("Email dan password wajib diisi");
-        setLoading(false);
         return;
       }
-
-      // 🔹 Login ke Firebase Auth
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-
-      // 🔹 P0: baca users/{uid} — bukan query users_public by email (bocor + bisa dipalsu)
-      const snap = await getDoc(doc(db, "users", user.uid));
-
-      if (!snap.exists()) {
-        await auth.signOut().catch(() => undefined);
-        try { localStorage.removeItem("userData"); } catch { /* ignore */ }
-        toast.warning("Akun belum terdaftar di sistem!");
+      const res = await authClient.signIn.email({ email, password });
+      if (res.error) {
+        const msg = res.error.message ?? "Periksa kembali email dan password Anda.";
+        setError(msg);
+        toast.error("Gagal Login", { description: msg });
         return;
       }
-      const userData = snap.data() as Partial<StoredUser> & { name?: string; role?: string; status?: string; isActive?: boolean };
-      if (userData.isActive === false) {
-        await auth.signOut().catch(() => undefined);
-        try { localStorage.removeItem("userData"); } catch { /* ignore */ }
-        toast.error("Akun dinonaktifkan", { description: "Hubungi admin." });
-        return;
-      }
-
       toast.success("Login berhasil!", {
-        description: `Selamat datang, ${userData.name || "user"}!`,
+        description: `Selamat datang, ${res.data?.user.name || "user"}!`,
       });
-
-      // 🔹 Cache display saja — otorisasi tetap via AuthProtector + rules
-      localStorage.setItem(
-        "userData",
-        JSON.stringify({
-          uid: user.uid,
-          email: user.email,
-          role: userData.role || "member",
-          status: userData.status || "active",
-          name: userData.name || "User",
-        })
-      );
-
-      // 🔹 Redirect ke dashboard
-      setTimeout(() => (window.location.href = "/dashboard/"), 1500);
+      window.location.href = "/dashboard/";
     } catch (err) {
-      console.error(err);
-      const msg = err instanceof Error ? err.message : "Periksa kembali email dan password Anda.";
-      toast.error("Gagal Login", {
-        description: msg,
-      });
+      const msg = err instanceof Error ? err.message : "Terjadi kesalahan jaringan.";
+      setError(msg);
+      toast.error("Gagal Login", { description: msg });
     } finally {
       setLoading(false);
     }
   };
-
-  useEffect(() => {
-    // P0: jangan percaya localStorage — cek sesi Firebase Auth
-    const unsub = onAuthStateChanged(auth, (fbUser) => {
-        if (fbUser) {
-                // Delay untuk toast
-                const toastDelay = setTimeout(() => {
-                    toast.success("Anda sudah login! (session)", {
-                        description: `Selamat datang kembali!`,
-                    });
-                }, 1000); // Delay 1 detik untuk toast
-
-                // Delay untuk redirect
-                const redirectDelay = setTimeout(() => {
-                    window.location.href = "/dashboard/";
-                }, 2500); // Delay 2.5 detik untuk redirect
-
-        void toastDelay;
-        void redirectDelay;
-      }
-    });
-    return () => unsub();
-  }, []);
 
   return (
     <motion.div

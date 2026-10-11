@@ -1,8 +1,9 @@
-// src/components/layout/Navbar.tsx — P0: display via useCurrentUser (verified), logout via Firebase Auth.
+// src/components/layout/Navbar.tsx — P0-migrasi: display via useCurrentUser (better-auth),
+// logout via authClient.signOut (cookie session, tanpa Firebase/localStorage).
 import { useState, useEffect, useRef, type ReactNode } from "react";
 import { Grip, Bell, UserRound, ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { auth } from "@/lib/firebaseConfig";
+import { authClient } from "@/lib/auth-client";
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser";
 
 export interface NavbarProps {
@@ -31,8 +32,7 @@ export default function Navbar({ toggleSidebar, Header }: NavbarProps) {
     }, []);
 
     const handleLogout = async () => {
-        try { localStorage.removeItem("userData"); } catch { /* ignore */ }
-        try { await auth.signOut(); } catch { /* ignore */ }
+        try { await authClient.signOut(); } catch { /* ignore */ }
         window.location.href = "/auth/login";
     };
 

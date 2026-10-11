@@ -1,8 +1,6 @@
-// src/components/forms/AddUserForm.tsx
+// src/components/forms/AddUserForm.tsx — P0-migrasi: create user via /api/admin/users
+// (server-side, session admin tetap aman — TIDAK ADA LAGI bug swap-session Firebase).
 import { useState, type FormEvent, type ChangeEvent, type JSX } from "react";
-import { db, auth, getEmailAuth } from "@/lib/firebaseConfig";
-import { doc, setDoc, serverTimestamp } from "firebase/firestore";
-import { createUserWithEmailAndPassword } from "firebase/auth";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -48,39 +46,24 @@ export default function AddUserForm(): JSX.Element {
         setLoading(true);
 
         try {
-        // 1️⃣ Buat user di Firebase Auth
-        const userCredential = await createUserWithEmailAndPassword(
-            auth,
-            formData.email,
-            formData.password
-        );
-
-        const user = userCredential.user;
-
-        await setDoc(doc(db, "users", user.uid), {
-            uid: user.uid,
-            name: formData.name,
-            email: formData.email,
-            photoURL: formData.photoURL || "",
-            role: formData.role ,
-            joinedTeams: [],
-            isActive: true,
-            createdBy: getEmailAuth(),
-            createdAt: serverTimestamp(),
-            lastLogin: serverTimestamp(),
+        const res = await fetch("/api/admin/users", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                name: formData.name,
+                email: formData.email,
+                password: formData.password,
+                role: formData.role,
+            }),
         });
-
-        await setDoc(doc(db, "users_public", user.uid), {
-            name: formData.name,
-            role: formData.role,
-            createdAt: serverTimestamp()
-        });
+        const data = (await res.json()) as { error?: string };
+        if (!res.ok) {
+            throw new Error(data.error || "Gagal membuat user");
+        }
 
         toast.success("✅ User added successfully!", {
             description: `${formData.name} berhasil ditambahkan.`,
         });
-
-        console.log("✅ User created in Auth & Firestore:", user.uid);
 
         setFormData({
             name: "",
@@ -90,7 +73,6 @@ export default function AddUserForm(): JSX.Element {
             role: "member",
         });
         } catch (error) {
-        console.error(error);
         const msg = error instanceof Error ? error.message : "Unknown error";
         toast.error("❌ Failed to add user.", {
             description: msg,
