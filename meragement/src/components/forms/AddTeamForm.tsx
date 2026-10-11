@@ -89,7 +89,7 @@ export default function AddTeamForm(): JSX.Element {
     e.preventDefault();
     try {
       await apiPost("/api/teams", formData);
-      toast.success("✅ Team created successfully!");
+      toast.success("Team created successfully!");
       setFormData({
         name: "",
         description: "",
@@ -97,7 +97,7 @@ export default function AddTeamForm(): JSX.Element {
       });
     } catch (error) {
       console.error(error);
-      toast.error("❌ Failed to create team.");
+      toast.error("Failed to create team.");
     }
   };
 

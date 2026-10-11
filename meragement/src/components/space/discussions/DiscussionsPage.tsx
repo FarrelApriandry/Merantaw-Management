@@ -18,6 +18,7 @@ import {
 import { apiGet, apiPost } from "@/lib/api-client";
 import DiscussionThread from "./DiscussionThread";
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser";
+import { CardSkeleton, EmptyState } from "@/components/ui/feedback";
 import type { Discussion } from "@/lib/types";
 
 export interface DiscussionsPageProps {
@@ -93,9 +94,12 @@ export default function DiscussionsPage({ projectId }: DiscussionsPageProps) {
       </header>
 
       {loading ? (
-        <p className="text-white/50 text-center py-10">Loading...</p>
+        <CardSkeleton rows={4} />
       ) : discussions.length === 0 ? (
-        <p className="text-white/50 text-center py-10">No discussions yet</p>
+        <EmptyState
+          title="Belum ada diskusi"
+          hint="Diskusi teknis project muncul di sini. Diskusi dengan investor/stakeholder tetap di Discord."
+        />
       ) : (
         <div className="space-y-3">
           <AnimatePresence>

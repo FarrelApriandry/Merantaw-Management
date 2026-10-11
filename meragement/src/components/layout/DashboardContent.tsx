@@ -13,6 +13,7 @@ import TaskCard from "../dashboard/TaskCard";
 import { apiGet } from "@/lib/api-client";
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser";
 import { useState, useEffect, type JSX } from "react";
+import { CardSkeleton, EmptyState } from "@/components/ui/feedback";
 import type { Project, Task } from "@/lib/types";
 
 interface TaskWithProject extends Task {
@@ -104,12 +105,17 @@ export default function DashboardContent(): JSX.Element {
         <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Project List */}
             <div className="rounded-2xl border border-white/30 p-4 shadow-sm">
-                <h2 className="flex text-lg font-semibold mb-3 gap-2 text-white/50"><Folder/>Projects</h2>
+                <h2 className="flex text-lg font-semibold mb-3 gap-2 text-white/80"><Folder/>Projects</h2>
                 <ScrollArea className="h-80 pr-3">
                     <div className="space-y-4">
-                    {loading && <p className="text-sm text-white/40">Loading…</p>}
+                    {loading && <CardSkeleton rows={3} />}
                     {!loading && space.length === 0 && (
-                        <p className="text-sm text-white/40">No projects yet</p>
+                        <EmptyState
+                            title="Belum ada project"
+                            hint="Project muncul di sini setelah admin menambahkannya dan memasukkan kamu sebagai anggota."
+                            actionLabel="Lihat semua Space"
+                            actionHref="/dashboard/spaces"
+                        />
                     )}
                     {space.map((p) => (
                         <ProjectCard
@@ -125,12 +131,15 @@ export default function DashboardContent(): JSX.Element {
 
             {/* Task List */}
             <div className="rounded-2xl border border-white/30 p-4 shadow-sm">
-                <h2 className="flex text-lg font-semibold mb-3 gap-2 text-white/50"><Check/>Recent Tasks</h2>
+                <h2 className="flex text-lg font-semibold mb-3 gap-2 text-white/80"><Check/>Recent Tasks</h2>
                 <ScrollArea className="h-80 pr-3">
                     <div className="space-y-4">
-                    {loading && <p className="text-sm text-white/40">Loading…</p>}
+                    {loading && <CardSkeleton rows={4} />}
                     {!loading && recentTasks.length === 0 && (
-                        <p className="text-sm text-white/40">No tasks yet</p>
+                        <EmptyState
+                            title="Belum ada task"
+                            hint="Task dari project kamu akan muncul di sini."
+                        />
                     )}
                     {recentTasks.map((t) => {
                         const label =

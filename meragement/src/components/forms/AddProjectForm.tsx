@@ -74,7 +74,7 @@ export default function AddProjectForm(): JSX.Element {
         e.preventDefault();
         try {
         await apiPost("/api/projects", formData);
-        toast.success("✅ Project created successfully!");
+        toast.success("Project created successfully!");
         setFormData({
             title: "",
             description: "",
@@ -86,7 +86,7 @@ export default function AddProjectForm(): JSX.Element {
         });
         } catch (error) {
             console.error(error);
-            toast.error("❌ Failed to create project.");
+            toast.error("Failed to create project.");
         }
     };
 

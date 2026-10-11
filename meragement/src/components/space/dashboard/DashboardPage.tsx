@@ -8,6 +8,7 @@ import {
   BookOpen, List, CheckCircle2,
 } from "lucide-react";
 import { motion } from "framer-motion";
+import { Skeleton, EmptyState } from "@/components/ui/feedback";
 import type { Project, Task, SpaceList, DocItem, Discussion } from "@/lib/types";
 
 interface Overview {
@@ -57,7 +58,19 @@ export default function DashboardPage({ projectId }: DashboardPageProps) {
   const recentDiscussions = overview?.recentDiscussions ?? [];
 
   if (loading) {
-    return <div className="p-6 text-white text-center">Loading dashboard...</div>;
+    return (
+      <div className="p-6 space-y-4" aria-busy="true" aria-label="Memuat dashboard…">
+        <Skeleton className="h-8 w-1/3" />
+        <Skeleton className="h-4 w-1/2" />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <Skeleton className="h-20" />
+          <Skeleton className="h-20" />
+          <Skeleton className="h-20" />
+          <Skeleton className="h-20" />
+        </div>
+        <Skeleton className="h-24 w-full" />
+      </div>
+    );
   }
 
   return (
@@ -132,7 +145,7 @@ export default function DashboardPage({ projectId }: DashboardPageProps) {
           </CardHeader>
           <CardContent className="space-y-2">
             {listCounts.length === 0 ? (
-              <p className="text-xs text-white/40">No lists yet</p>
+              <EmptyState title="Belum ada list" hint="List task akan muncul di sini." />
             ) : (
               listCounts.map((l) => (
                 <a
@@ -157,7 +170,7 @@ export default function DashboardPage({ projectId }: DashboardPageProps) {
           </CardHeader>
           <CardContent className="space-y-2">
             {recentDocs.length === 0 ? (
-              <p className="text-xs text-white/40">No documents yet</p>
+              <EmptyState title="Belum ada dokumen" />
             ) : (
               recentDocs.map((d) => (
                 <a
@@ -182,7 +195,7 @@ export default function DashboardPage({ projectId }: DashboardPageProps) {
           </CardHeader>
           <CardContent className="space-y-2">
             {recentDiscussions.length === 0 ? (
-              <p className="text-xs text-white/40">No discussions yet</p>
+              <EmptyState title="Belum ada diskusi" />
             ) : (
               recentDiscussions.map((d) => (
                 <a

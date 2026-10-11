@@ -92,7 +92,7 @@ export default function LoginForm(): JSX.Element {
           disabled={loading}
           className="btn-primary mt-3 backdrop-blur-xl"
         >
-          {loading ? "Loading..." : "Login"}
+          {loading ? "Masuk…" : "Login"}
         </Button>
       </form>
     </motion.div>

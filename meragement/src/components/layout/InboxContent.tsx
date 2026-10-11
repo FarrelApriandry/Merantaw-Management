@@ -1,6 +1,7 @@
 import { useEffect, useState, type JSX } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { motion } from "framer-motion";
+import { CardSkeleton, EmptyState } from "@/components/ui/feedback";
 import type { InboxEmail } from "@/lib/types";
 
 export default function InboxContent(): JSX.Element {
@@ -48,8 +49,17 @@ export default function InboxContent(): JSX.Element {
 
     return (
         <div className="gap-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 p-6">
-            {loading && <div className="text-white/80">Loading emails...</div>}
-            {!loading && error && <div className="text-red-300 text-sm">{error}</div>}
+            {loading && <div className="col-span-full"><CardSkeleton rows={3} /></div>}
+            {!loading && error && (
+                <div className="col-span-full">
+                    <EmptyState title={error} hint="Periksa konfigurasi inbox di server atau login ulang." />
+                </div>
+            )}
+            {!loading && !error && emails.length === 0 && (
+                <div className="col-span-full">
+                    <EmptyState title="Inbox kosong" hint="Tidak ada email belum dibaca." />
+                </div>
+            )}
             {emails.map((email, idx) => (
                 <motion.div key={idx} whileHover={{ scale: 1.02 }}>
                 <Card className="gap-2 bg-white/5 border border-white/10 text-white">

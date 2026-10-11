@@ -71,9 +71,10 @@ export const POST: APIRoute = async ({ request }) => {
   }
 };
 
-// PATCH /api/admin/users — update role / isActive / reset password milik user lain.
+// PATCH /api/admin/users — update name / email / role / isActive / reset password milik user lain.
 // role & isActive: TIDAK BOLEH self-mutasi (cegah admin demote/diaktifkan diri sendiri
 // secara tidak sengaja; minimal tetap ada 1 admin aktif).
+// name & email boleh self-edit (tidak mengubah hak akses).
 export const PATCH: APIRoute = async ({ request }) => {
   const session = await auth.api.getSession({ headers: request.headers });
   const me = session?.user as
@@ -83,13 +84,13 @@ export const PATCH: APIRoute = async ({ request }) => {
     return json({ error: "unauthorized" }, 401);
   }
 
-  let body: { id?: string; role?: string; isActive?: boolean; password?: string };
+  let body: { id?: string; name?: string; email?: string; role?: string; isActive?: boolean; password?: string };
   try {
     body = await request.json();
   } catch {
     return json({ error: "invalid json" }, 400);
   }
-  const { id, role, isActive, password } = body;
+  const { id, name, email, role, isActive, password } = body;
   if (!id) return json({ error: "id wajib" }, 400);
   if (id === me.id && (role !== undefined || isActive !== undefined)) {
     return json({ error: "tidak boleh mengubah role/status diri sendiri" }, 400);
@@ -104,6 +105,19 @@ export const PATCH: APIRoute = async ({ request }) => {
   try {
     if (role !== undefined) {
       await db.update(user).set({ role, updatedAt: new Date() }).where(eq(user.id, id));
+    }
+    if (name !== undefined) {
+      if (!name.trim()) return json({ error: "name tidak boleh kosong" }, 400);
+      await db.update(user).set({ name: name.trim(), updatedAt: new Date() }).where(eq(user.id, id));
+    }
+    if (email !== undefined) {
+      const clean = email.trim().toLowerCase();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clean)) return json({ error: "email tidak valid" }, 400);
+      try {
+        await db.update(user).set({ email: clean, updatedAt: new Date() }).where(eq(user.id, id));
+      } catch {
+        return json({ error: "email sudah terdaftar" }, 409);
+      }
     }
     if (isActive !== undefined) {
       await db.update(user).set({ isActive, updatedAt: new Date() }).where(eq(user.id, id));

@@ -1,7 +1,7 @@
 // src/components/layout/Navbar.tsx — P0-migrasi: display via useCurrentUser (better-auth),
 // logout via authClient.signOut (cookie session, tanpa Firebase/localStorage).
 import { useState, useEffect, useRef, type ReactNode } from "react";
-import { Grip, Bell, UserRound, ChevronDown } from "lucide-react";
+import { UserRound, ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { authClient } from "@/lib/auth-client";
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser";
@@ -53,8 +53,6 @@ export default function Navbar({ toggleSidebar, Header }: NavbarProps) {
         </div>
 
         <div className="flex items-center gap-3 relative">
-            <ActionButton icon={<Grip size={16} />} />
-            <ActionButton icon={<Bell size={16} />} />
             <motion.button
             onClick={() => setOpenUserCard(!openUserCard)}
             whileHover={{ scale: 1.05, y: -2 }}
@@ -95,17 +93,5 @@ export default function Navbar({ toggleSidebar, Header }: NavbarProps) {
             </AnimatePresence>
         </div>
         </motion.header>
-    );
-}
-
-function ActionButton({ icon }: { icon: ReactNode }) {
-    return (
-        <motion.button
-        whileHover={{ scale: 1.15, rotate: 10 }}
-        transition={{ type: "spring", stiffness: 300 }}
-        className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-gray-200 hover:text-white transition-all"
-        >
-        {icon}
-        </motion.button>
     );
 }

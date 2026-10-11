@@ -16,7 +16,11 @@ export default function AuthProtector({ children }: { children: ReactNode }) {
   if (isPending) {
     return (
       <div className="flex items-center justify-center min-h-screen text-white">
-        <div>Checking authentication...</div>
+        <div className="w-64 space-y-3" aria-busy="true" aria-label="Memeriksa sesi…">
+          <div className="animate-pulse rounded-lg bg-white/10 h-6 w-2/3 mx-auto" />
+          <div className="animate-pulse rounded-lg bg-white/10 h-4 w-full" />
+          <div className="animate-pulse rounded-lg bg-white/10 h-4 w-1/2 mx-auto" />
+        </div>
       </div>
     );
   }

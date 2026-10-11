@@ -8,6 +8,7 @@ import AddTaskRow from "./AddTaskRow";
 import EditableTaskRow from "./EditableTaskRow";
 import { toast } from "sonner";
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser";
+import { TableSkeleton, EmptyState } from "@/components/ui/feedback";
 import {
   Select,
   SelectTrigger,
@@ -264,7 +265,10 @@ export default function TaskPage({ projectId }: TaskPageProps) {
           </button>
         ))}
         {lists.length === 0 && !loading && (
-          <p className="text-sm text-white/40">No lists yet. Create one from the sidebar.</p>
+          <EmptyState
+            title="Belum ada list"
+            hint={readOnly ? "List dibuat oleh tim project." : "Buat list pertama dari tombol + di sidebar."}
+          />
         )}
       </div>
 
@@ -369,9 +373,9 @@ export default function TaskPage({ projectId }: TaskPageProps) {
                     />
                   )}
                   {loading ? (
-                    <tr><td colSpan={8} className="py-4 text-center">Loading…</td></tr>
+                    <tr><td colSpan={8} className="py-4"><TableSkeleton rows={5} /></td></tr>
                   ) : filteredTasks.length === 0 ? (
-                    <tr><td colSpan={8} className="py-4 text-center">No tasks found</td></tr>
+                    <tr><td colSpan={8} className="py-4"><EmptyState title="Tidak ada task" hint="Coba ubah filter pencarian." /></td></tr>
                   ) : (
                     filteredTasks.map((task) => (
                       <EditableTaskRow

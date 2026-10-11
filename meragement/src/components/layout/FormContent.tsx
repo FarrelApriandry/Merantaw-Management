@@ -26,7 +26,12 @@ export default function FormContent(): JSX.Element {
     };
 
     if (checking) {
-        return <div className="text-white/60 text-sm">Checking permissions…</div>;
+        return (
+            <div className="space-y-3 max-w-md mx-auto" aria-busy="true" aria-label="Memeriksa izin…">
+                <div className="animate-pulse rounded-lg bg-white/10 h-10 w-full" />
+                <div className="animate-pulse rounded-lg bg-white/10 h-40 w-full" />
+            </div>
+        );
     }
 
     if (!isUserAdmin) {

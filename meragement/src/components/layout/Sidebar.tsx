@@ -1,5 +1,5 @@
 import {
-  Home, Inbox, Users, FileText, Calendar, Target,
+  Home, Inbox, Users, FileText, Settings,
   MessageCircle, Folder, ChevronDown, ChevronLeft, Earth,
   List, Plus, BookOpen, CalendarDays,
 } from "lucide-react";
@@ -170,20 +170,21 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
         <NavItem icon={<Earth size={18} />} label="Space" href="/dashboard/spaces" isOpen={isOpen} currentPath={currentPath} />
         {isAdmin && <NavItem icon={<Inbox size={18} />} label="Inbox" href="/dashboard/inbox" isOpen={isOpen} currentPath={currentPath} />}
         {isAdmin && <NavItem icon={<FileText size={18} />} label="Forms" href="/dashboard/forms" isOpen={isOpen} currentPath={currentPath} />}
-        <NavItem icon={<Calendar size={18} />} label="Calendar" href="/dashboard/calendar" isOpen={isOpen} currentPath={currentPath} />
-        <NavItem icon={<Target size={18} />} label="Milestone" href="/dashboard/milestone" isOpen={isOpen} currentPath={currentPath} />
-        <NavItem icon={<MessageCircle size={18} />} label="Discussion" href="/dashboard/discussion" isOpen={isOpen} currentPath={currentPath} />
+        {isAdmin && <NavItem icon={<Settings size={18} />} label="Manage" href="/dashboard/manage" isOpen={isOpen} currentPath={currentPath} />}
 
         {/* Spaces */}
         <div className="mt-3">
           {loadingSpaces && (
-            <div className="px-3 py-2 text-sm text-gray-400">{isOpen ? "Loading spaces..." : "..."}</div>
+            <div className="px-3 py-2 space-y-2" aria-busy="true" aria-label="Memuat spaces…">
+              <div className="animate-pulse rounded-md bg-white/10 h-8" />
+              <div className="animate-pulse rounded-md bg-white/10 h-8" />
+            </div>
           )}
           {!loadingSpaces && spacesError && (
             <div className="px-3 py-2 text-sm text-red-400">Error loading spaces</div>
           )}
           {!loadingSpaces && !spaces.length && !spacesError && (
-            <div className="px-3 py-2 text-sm text-gray-400">{isOpen ? "No spaces found" : "—"}</div>
+            <div className="px-3 py-2 text-sm text-white/50">{isOpen ? "Belum ada space — hubungi admin" : "—"}</div>
           )}
           {spaces.map((space) => (
             <div key={space.id}>
@@ -262,7 +263,7 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
                         />
                       ))}
                       {spaceLists[space.id]?.length === 0 && (
-                        <div className="px-3 py-1 text-xs text-white/30">No lists yet</div>
+                        <div className="px-3 py-1 text-xs text-white/50">Belum ada list</div>
                       )}
                     </div>
                   </motion.div>

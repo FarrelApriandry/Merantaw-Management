@@ -58,7 +58,7 @@ export default function TeamsPage(): JSX.Element {
                 </div>
                 <div className="flex items-center gap-2">
                     <Users size={16} className="text-white/60" />
-                    <span className="text-sm">{(project.teamId && teamNames[project.teamId]) || "No team"}</span>
+                    <span className="text-sm">{(project.teamId && teamNames[project.teamId]) || <span className="text-white/40">Tanpa tim</span>}</span>
                 </div>
                 <div className="flex items-center gap-2">
                     <span className="text-sm rounded-full bg-gray-700 px-2 py-0.5">{project.assignedUsers?.length || 0} Members</span>

@@ -61,7 +61,7 @@ export default function AddUserForm(): JSX.Element {
             throw new Error(data.error || "Gagal membuat user");
         }
 
-        toast.success("✅ User added successfully!", {
+        toast.success("User added successfully!", {
             description: `${formData.name} berhasil ditambahkan.`,
         });
 
@@ -74,7 +74,7 @@ export default function AddUserForm(): JSX.Element {
         });
         } catch (error) {
         const msg = error instanceof Error ? error.message : "Unknown error";
-        toast.error("❌ Failed to add user.", {
+        toast.error("Failed to add user.", {
             description: msg,
         });
         } finally {

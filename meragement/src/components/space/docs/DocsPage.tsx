@@ -27,6 +27,7 @@ import {
 import type { DocItem, FirestoreTimestampLike } from "@/lib/types";
 import { toDateSafe } from "@/lib/types";
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser";
+import { CardSkeleton, EmptyState } from "@/components/ui/feedback";
 
 const CATEGORIES = ["GDD", "SRS", "Wiki", "Meeting Notes", "Other"];
 
@@ -150,9 +151,12 @@ export default function DocsPage({ projectId }: DocsPageProps) {
 
       {/* Doc Grid */}
       {loading ? (
-        <p className="text-white/50 text-center py-10">Loading...</p>
+        <CardSkeleton rows={6} />
       ) : filtered.length === 0 ? (
-        <p className="text-white/50 text-center py-10">No documents found</p>
+        <EmptyState
+          title="Dokumen tidak ditemukan"
+          hint="Coba ubah kata kunci atau kategori filter."
+        />
       ) : (
         <motion.div layout className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <AnimatePresence>

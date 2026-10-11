@@ -1,0 +1,9 @@
+---
+import DashboardLayout from "@/layouts/DashboardLayout.astro";
+import ManageContent from "@/components/layout/ManageContent";
+---
+
+<DashboardLayout title="Manage">
+    <h1 class="text-2xl font-semibold mb-6 text-white/80">Manage</h1>
+    <ManageContent client:load />
+</DashboardLayout>
