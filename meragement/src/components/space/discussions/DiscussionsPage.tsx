@@ -82,7 +82,7 @@ export default function DiscussionsPage({ projectId }: DiscussionsPageProps) {
   }
 
   return (
-    <div className="p-6 bg-[#0D132B] rounded-xl border border-white/5 text-white min-h-[80vh]">
+    <div className="p-4 md:p-6 bg-[#0D132B] rounded-xl border border-white/5 text-white min-h-[80vh]">
       <header className="mb-6 flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-2xl font-semibold">Discussions</h1>

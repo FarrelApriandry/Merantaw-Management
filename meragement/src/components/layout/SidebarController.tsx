@@ -9,7 +9,10 @@ export interface SidebarControllerProps {
 }
 
 export default function SidebarController({ children, Header }: SidebarControllerProps) {
-    const [isOpen, setIsOpen] = useState<boolean>(true);
+    // Mobile (<md) mulai tertutup sebagai drawer; desktop mulai terbuka.
+    const [isOpen, setIsOpen] = useState<boolean>(
+        () => typeof window === "undefined" || window.innerWidth >= 768,
+    );
     const [activeTitle, setActiveTitle] = useState<string>(Header);
 
     useEffect(() => {
@@ -40,10 +43,10 @@ export default function SidebarController({ children, Header }: SidebarControlle
         <div className="flex min-h-screen bg-[#0D132B] text-white overflow-hidden">
             <Sidebar isOpen={isOpen} toggleSidebar={() => setIsOpen(!isOpen)} />
 
-            <div className={`flex-1 flex flex-col transition-all duration-500`}>
+            <div className={`flex-1 flex flex-col min-w-0 transition-all duration-500`}>
                 {/* Pakai activeTitle yang sudah diupdate, bukan Header mentah */}
                 <Navbar toggleSidebar={() => setIsOpen(!isOpen)} Header={activeTitle}/>
-                <div className="flex-1 p-6 overflow-y-auto">{children}</div>
+                <div className="flex-1 p-4 md:p-6 overflow-y-auto min-w-0">{children}</div>
             </div>
         </div>
     );

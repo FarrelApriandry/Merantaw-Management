@@ -64,7 +64,7 @@ export default function DocEditor({ projectId, doc, readOnly = false, onBack }: 
     <motion.div
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
-      className="p-6 bg-[#0D132B] rounded-xl border border-white/5 text-white min-h-[80vh] flex flex-col"
+      className="p-4 md:p-6 bg-[#0D132B] rounded-xl border border-white/5 text-white min-h-[80vh] flex flex-col"
     >
       {/* Header */}
       <header className="flex items-center justify-between mb-4 flex-wrap gap-3">
@@ -112,11 +112,11 @@ export default function DocEditor({ projectId, doc, readOnly = false, onBack }: 
         </div>
       </header>
 
-      {/* Editor Area */}
-      <div className="flex-1 flex gap-4 min-h-0 overflow-hidden">
+      {/* Editor Area — split hanya di md+, mobile selalu stack vertikal */}
+      <div className="flex-1 flex flex-col md:flex-row gap-4 min-h-0 overflow-hidden overflow-y-auto md:overflow-visible">
         {/* Textarea — hanya untuk non-investor */}
         {!readOnly && mode !== "preview" && (
-          <div className={`flex flex-col ${mode === "split" ? "w-1/2" : "w-full"}`}>
+          <div className={`flex flex-col ${mode === "split" ? "md:w-1/2" : "w-full"}`}>
             <textarea
               value={content}
               onChange={handleChange}
@@ -129,7 +129,7 @@ export default function DocEditor({ projectId, doc, readOnly = false, onBack }: 
 
         {/* Preview */}
         {(readOnly || mode !== "edit") && (
-          <div className={`overflow-y-auto ${!readOnly && mode === "split" ? "w-1/2" : "w-full"} bg-white/5 border border-white/10 rounded-lg p-6 min-h-[60vh]`}>
+          <div className={`overflow-y-auto ${!readOnly && mode === "split" ? "md:w-1/2" : "w-full"} bg-white/5 border border-white/10 rounded-lg p-4 md:p-6 min-h-[40vh] md:min-h-[60vh]`}>
             <article className="prose prose-invert prose-sm max-w-none">
               <Markdown remarkPlugins={[remarkGfm]}>{content}</Markdown>
             </article>

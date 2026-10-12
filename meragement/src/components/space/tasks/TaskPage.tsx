@@ -239,7 +239,7 @@ export default function TaskPage({ projectId }: TaskPageProps) {
   const activeList = lists.find((l) => l.id === activeListId);
 
   return (
-    <div className="p-6 bg-[#0D132B] rounded-xl border border-white/5 text-white">
+    <div className="p-4 md:p-6 bg-[#0D132B] rounded-xl border border-white/5 text-white">
       {/* HEADER */}
       <header className="mb-6">
         <h1 className="text-2xl font-semibold">
@@ -283,7 +283,7 @@ export default function TaskPage({ projectId }: TaskPageProps) {
             transition={{ duration: 0.2 }}
           >
             <div className="flex flex-wrap gap-3 mb-5">
-              <div className="relative w-64">
+              <div className="relative w-full sm:w-64">
                 <Search className="absolute left-2 top-2.5 text-white/40" size={14} />
                 <Input
                   placeholder="Search tasks"
@@ -350,7 +350,7 @@ export default function TaskPage({ projectId }: TaskPageProps) {
 
             {/* TABLE */}
             <motion.div layout className="overflow-x-auto rounded-xl border border-white/10">
-              <table className="min-w-full text-sm">
+              <table className="min-w-[720px] w-full text-sm">
                 <thead className="bg-white/5 text-white/70">
                   <tr>
                     <th className="px-4 py-2"><SquareCheckBig size={16} /></th>

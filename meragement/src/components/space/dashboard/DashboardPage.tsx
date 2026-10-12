@@ -62,7 +62,7 @@ export default function DashboardPage({ projectId }: DashboardPageProps) {
       <div className="p-6 space-y-4" aria-busy="true" aria-label="Memuat dashboard…">
         <Skeleton className="h-8 w-1/3" />
         <Skeleton className="h-4 w-1/2" />
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
           <Skeleton className="h-20" />
           <Skeleton className="h-20" />
           <Skeleton className="h-20" />

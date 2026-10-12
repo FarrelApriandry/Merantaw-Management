@@ -1,7 +1,7 @@
 // src/components/layout/Navbar.tsx — P0-migrasi: display via useCurrentUser (better-auth),
 // logout via authClient.signOut (cookie session, tanpa Firebase/localStorage).
 import { useState, useEffect, useRef, type ReactNode } from "react";
-import { UserRound, ChevronDown } from "lucide-react";
+import { UserRound, ChevronDown, Menu } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { authClient } from "@/lib/auth-client";
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser";
@@ -46,8 +46,17 @@ export default function Navbar({ toggleSidebar, Header }: NavbarProps) {
                     border-b border-white/10 backdrop-blur-2xl
                     shadow-[0_0_25px_rgba(0,0,0,0.25)] sticky top-0 z-40"
         >
-        <div className="flex items-center gap-3">
-            <h2 className="text-lg font-semibold tracking-wide bg-gradient-to-r from-blue-300 to-cyan-200 bg-clip-text text-transparent">
+        <div className="flex items-center gap-3 min-w-0">
+            {toggleSidebar && (
+            <button
+                onClick={toggleSidebar}
+                className="md:hidden p-2 -ml-2 rounded-lg hover:bg-white/10 transition shrink-0"
+                aria-label="Buka/tutup menu"
+            >
+                <Menu size={20} className="text-gray-200" />
+            </button>
+            )}
+            <h2 className="text-base md:text-lg font-semibold tracking-wide bg-gradient-to-r from-blue-300 to-cyan-200 bg-clip-text text-transparent truncate">
             {Header}
             </h2>
         </div>

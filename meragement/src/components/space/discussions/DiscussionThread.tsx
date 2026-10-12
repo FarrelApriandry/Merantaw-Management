@@ -81,7 +81,7 @@ export default function DiscussionThread({ projectId, discussion, currentUser, r
     <motion.div
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
-      className="p-6 bg-[#0D132B] rounded-xl border border-white/5 text-white min-h-[80vh] flex flex-col"
+      className="p-4 md:p-6 bg-[#0D132B] rounded-xl border border-white/5 text-white min-h-[80vh] flex flex-col"
     >
       {/* Header */}
       <header className="flex items-center gap-3 mb-6">

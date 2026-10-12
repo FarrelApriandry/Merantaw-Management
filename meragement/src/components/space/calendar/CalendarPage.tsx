@@ -245,13 +245,14 @@ export default function CalendarPage({ projectId }: CalendarPageProps) {
   }, [dropAnim]);
 
   return (
-    <div className="p-6 bg-[#0D132B] rounded-xl border border-white/5 text-white min-h-[80vh]">
+    <div className="p-4 md:p-6 bg-[#0D132B] rounded-xl border border-white/5 text-white min-h-[80vh]">
       <header className="mb-4">
         <h1 className="text-2xl font-semibold">Calendar</h1>
         <p className="text-sm text-white/60">Drag & drop to reschedule • Click range to create</p>
       </header>
 
-      <div className="rbc-dark-theme rounded-xl overflow-hidden border border-white/10">
+      <div className="rbc-dark-theme rounded-xl overflow-x-auto border border-white/10">
+        <div className="min-w-[640px]">
         <DnDCalendar
           localizer={localizer}
           events={calendarEvents}
@@ -271,6 +272,7 @@ export default function CalendarPage({ projectId }: CalendarPageProps) {
           popup
           draggableAccessor={() => !readOnly}
         />
+        </div>
       </div>
 
       {/* Event Detail Dialog */}

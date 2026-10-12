@@ -48,7 +48,7 @@ export default function InboxContent(): JSX.Element {
     }, []);
 
     return (
-        <div className="gap-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 p-6">
+        <div className="gap-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 p-4 md:p-6">
             {loading && <div className="col-span-full"><CardSkeleton rows={3} /></div>}
             {!loading && error && (
                 <div className="col-span-full">

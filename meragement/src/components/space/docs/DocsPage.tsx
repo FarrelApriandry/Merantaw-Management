@@ -108,7 +108,7 @@ export default function DocsPage({ projectId }: DocsPageProps) {
   }
 
   return (
-    <div className="p-6 bg-[#0D132B] rounded-xl border border-white/5 text-white min-h-[80vh]">
+    <div className="p-4 md:p-6 bg-[#0D132B] rounded-xl border border-white/5 text-white min-h-[80vh]">
       <header className="mb-6 flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-2xl font-semibold">Docs</h1>
@@ -121,7 +121,7 @@ export default function DocsPage({ projectId }: DocsPageProps) {
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3 mb-6">
-        <div className="relative w-64">
+        <div className="relative w-full sm:w-64">
           <Search className="absolute left-2 top-2.5 text-white/40" size={14} />
           <Input
             placeholder="Search docs..."

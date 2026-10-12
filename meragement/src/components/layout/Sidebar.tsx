@@ -43,6 +43,13 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
   }, []);
 
   // Projects via API (poll 15s pengganti onSnapshot)
+  // Auto-tutup drawer di mobile saat pindah halaman.
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.innerWidth < 768 && isOpen) {
+      toggleSidebar();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPath]);
   useEffect(() => {
     if (!isClient || !user) return;
     let cancelled = false;
@@ -126,10 +133,20 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
   }
 
   return (
+    <>
+    {/* Backdrop mobile — tutup drawer saat klik di luar */}
+    {isOpen && (
+      <div
+        className="fixed inset-0 z-30 bg-black/60 backdrop-blur-sm md:hidden"
+        onClick={toggleSidebar}
+        aria-hidden="true"
+      />
+    )}
     <motion.aside
       animate={{ width: isOpen ? 256 : 80 }}
       transition={{ duration: 0.4, ease: "easeInOut" }}
-      className="h-auto bg-gradient-to-b from-white/10 to-white/5 backdrop-blur-2xl border-r border-white/10 shadow-[0_0_20px_rgba(255,255,255,0.05)] relative flex flex-col p-4 overflow-h-auto"
+      className={`bg-gradient-to-b from-white/10 to-white/5 backdrop-blur-2xl border-r border-white/10 shadow-[0_0_20px_rgba(255,255,255,0.05)] relative flex flex-col p-4 overflow-h-auto
+        ${isOpen ? "fixed md:static inset-y-0 left-0 z-40 h-screen" : "h-auto"}`}
     >
       {/* Collapse button */}
       <button
@@ -280,6 +297,7 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
         onSubmit={(data) => handleCreateList(createListFor, data)}
       />
     </motion.aside>
+    </>
   );
 }
 
