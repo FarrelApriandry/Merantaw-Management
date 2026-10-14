@@ -59,7 +59,7 @@ export default function LoginForm(): JSX.Element {
     >
       <div className="text-center mb-6">
         <img
-          src="/favicon.svg"
+          src="/favicon.ico"
           alt="Merantaw Logo"
           className="w-14 h-14 mx-auto mb-2 opacity-80"
         />
