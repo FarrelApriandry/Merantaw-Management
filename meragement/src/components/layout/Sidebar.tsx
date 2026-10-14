@@ -159,7 +159,7 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
       {/* Logo */}
       <div className="flex items-center gap-3 mb-8 mt-2 justify-center">
         <motion.img
-          src="/favicon.ico"
+          src="/favicon.png"
           alt="Logo"
           className="w-9 h-9 drop-shadow-lg"
           whileHover={{ rotate: 10, scale: 1.05 }}
