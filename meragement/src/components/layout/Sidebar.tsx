@@ -145,8 +145,8 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
     <motion.aside
       animate={{ width: isOpen ? 256 : 80 }}
       transition={{ duration: 0.4, ease: "easeInOut" }}
-      className={`bg-gradient-to-b from-white/10 to-white/5 backdrop-blur-2xl border-r border-white/10 shadow-[0_0_20px_rgba(255,255,255,0.05)] relative flex flex-col p-4 overflow-h-auto
-        ${isOpen ? "fixed md:static inset-y-0 left-0 z-40 h-screen" : "h-auto"}`}
+      className={`h-auto bg-gradient-to-b from-white/10 to-white/5 backdrop-blur-2xl border-r border-white/10 shadow-[0_0_20px_rgba(255,255,255,0.05)] relative flex flex-col p-4 overflow-h-auto
+        ${isOpen ? "fixed md:static inset-y-0 left-0 z-40" : "h-auto"}`}
     >
       {/* Collapse button */}
       <button

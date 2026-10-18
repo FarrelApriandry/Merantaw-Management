@@ -27,3 +27,6 @@ pnpm-debug.log*
 # vercel & neon local tooling
 .vercel/
 .agents/
+
+# local scripts (insert tasks, verifikasi) — jangan ke-commit
+test/
