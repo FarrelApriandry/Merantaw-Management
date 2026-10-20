@@ -103,6 +103,22 @@ export default function TaskPage({ projectId }: TaskPageProps) {
   }, [projectId]);
 
   // Tasks per activeList (poll 10s pengganti onSnapshot)
+  // `refreshTasks` dipakai bersama oleh poll, create, delete, dan update inline
+  // supaya setiap mutasi langsung terlihat tanpa nunggu tick berikutnya.
+  const refreshTasks = useCallback(async (): Promise<void> => {
+    if (!activeListIdRef.current) return;
+    try {
+      const taskList = await apiGet<Task[]>(
+        `/api/projects/${projectId}/lists/${activeListIdRef.current}/tasks`,
+      );
+      setServerTasks(taskList);
+      const cats = [...new Set(taskList.flatMap((t) => t.category || []))];
+      setProjectCategories(cats);
+    } catch {
+      /* diabaikan — poll berikutnya yang menyusul */
+    }
+  }, [projectId]);
+
   useEffect(() => {
     if (!projectId || !activeListId) {
       setServerTasks([]);
@@ -388,6 +404,7 @@ export default function TaskPage({ projectId }: TaskPageProps) {
                         toggleSelect={toggleSelect}
                         selected={selected}
                         readOnly={readOnly}
+                        onUpdated={refreshTasks}
                       />
                     ))
                   )}

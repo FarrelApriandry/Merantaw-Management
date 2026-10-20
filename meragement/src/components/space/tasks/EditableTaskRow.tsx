@@ -24,6 +24,9 @@ export interface EditableTaskRowProps {
   toggleSelect: (id: string) => void;
   selected: Set<string>;
   readOnly?: boolean;
+  // Dipanggil setelah PATCH sukses supaya parent langsung refetch
+  // (pengganti onSnapshot: tanpa ini UI tunggu tick poll 10 detik berikutnya).
+  onUpdated?: () => void;
 }
 
 export default function EditableTaskRow({
@@ -35,6 +38,7 @@ export default function EditableTaskRow({
   toggleSelect,
   selected,
   readOnly = false,
+  onUpdated,
 }: EditableTaskRowProps) {
   const [saving, setSaving] = useState<boolean>(false);
 
@@ -50,6 +54,12 @@ export default function EditableTaskRow({
         }
       }
       await apiPatch(`/api/projects/${projectId}/lists/${listId}/tasks/${task.id}`, { [field]: value });
+      // Refetch langsung supaya perubahan terlihat tanpa nunggu poll 10s.
+      try {
+        await onUpdated?.();
+      } catch {
+        /* diabaikan — poll berikutnya yang menyusul */
+      }
       toast.success("Task updated!", { description: `${field} updated` });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Unknown error";
