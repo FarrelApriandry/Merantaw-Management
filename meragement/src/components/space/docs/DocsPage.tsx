@@ -1,6 +1,6 @@
 import { toast } from "sonner";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, FileText, Trash2, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -46,10 +46,19 @@ export default function DocsPage({ projectId }: DocsPageProps) {
   const [newTitle, setNewTitle] = useState<string>("");
   const [newCategory, setNewCategory] = useState<string>("Wiki");
 
+  const load = useCallback(async (): Promise<void> => {
+    try {
+      const list = await apiGet<DocItem[]>(`/api/projects/${projectId}/docs`);
+      setDocs(list);
+    } catch { /* abaikan */ } finally {
+      setLoading(false);
+    }
+  }, [projectId]);
+
   useEffect(() => {
     if (!projectId) return;
     let cancelled = false;
-    const load = async (): Promise<void> => {
+    const run = async (): Promise<void> => {
       try {
         const list = await apiGet<DocItem[]>(`/api/projects/${projectId}/docs`);
         if (!cancelled) setDocs(list);
@@ -57,8 +66,8 @@ export default function DocsPage({ projectId }: DocsPageProps) {
         if (!cancelled) setLoading(false);
       }
     };
-    void load();
-    const t = setInterval(() => void load(), 10000);
+    void run();
+    const t = setInterval(() => void run(), 10000);
     return () => { cancelled = true; clearInterval(t); };
   }, [projectId]);
 
@@ -79,6 +88,8 @@ export default function DocsPage({ projectId }: DocsPageProps) {
       });
       setNewTitle("");
       setCreateOpen(false);
+      // Refetch supaya grid list sinkron (updatedAt, urutan) dengan server.
+      await load();
       setActiveDoc({ id: ref.id, title: newTitle.trim(), content, category: newCategory });
     } catch {
       toast.error("Failed to create document");
@@ -89,7 +100,8 @@ export default function DocsPage({ projectId }: DocsPageProps) {
     if (!confirm(`Delete this document?`)) return;
     try {
       await apiDelete(`/api/projects/${projectId}/docs/${docId}`);
-      setDocs((prev) => prev.filter((d) => d.id !== docId));
+      // Refetch; filter state lokal langsung jadi tidak relevan kalau perlu.
+      await load();
       if (activeDoc?.id === docId) setActiveDoc(null);
     } catch {
       toast.error("Failed to delete document");
@@ -103,6 +115,7 @@ export default function DocsPage({ projectId }: DocsPageProps) {
         doc={activeDoc}
         readOnly={readOnly}
         onBack={() => setActiveDoc(null)}
+        onSaved={load}
       />
     );
   }

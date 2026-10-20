@@ -1,7 +1,7 @@
 // src/components/space/discussions/DiscussionsPage.tsx — P0: pakai verified user, bukan localStorage.
 import { toast } from "sonner";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, MessageCircle, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -36,7 +36,7 @@ export default function DiscussionsPage({ projectId }: DiscussionsPageProps) {
   const currentUser = useCurrentUser();
   const readOnly = currentUser?.role === "investor";
 
-  const load = async (): Promise<void> => {
+  const load = useCallback(async (): Promise<void> => {
     try {
       const list = await apiGet<Discussion[]>(`/api/projects/${projectId}/discussions`);
       setDiscussions(list);
@@ -45,13 +45,14 @@ export default function DiscussionsPage({ projectId }: DiscussionsPageProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [projectId]);
+
   useEffect(() => {
     if (!projectId) return;
     void load();
     const t = setInterval(() => void load(), 10000);
     return () => clearInterval(t);
-  }, [projectId]);
+  }, [projectId, load]);
 
   const handleCreate = async (): Promise<void> => {
     if (!newTitle.trim() || !newContent.trim()) return;
@@ -63,7 +64,10 @@ export default function DiscussionsPage({ projectId }: DiscussionsPageProps) {
       setNewTitle("");
       setNewContent("");
       setCreateOpen(false);
-      setDiscussions((prev) => [created, ...prev]);
+      // Refetch supaya list sinkron dengan server (replyCount, status) — bukan
+      // hanya menempelkan objek hasil create yang mungkin belum lengkap.
+      await load();
+      void created;
     } catch {
       toast.error("Failed to create discussion");
     }

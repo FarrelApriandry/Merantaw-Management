@@ -16,9 +16,11 @@ export interface DocEditorProps {
   doc: DocItem;
   readOnly?: boolean;
   onBack: () => void;
+  /** Dipanggil setelah save sukses supaya DocsPage bisa refetch list (updatedAt). */
+  onSaved?: () => void;
 }
 
-export default function DocEditor({ projectId, doc, readOnly = false, onBack }: DocEditorProps) {
+export default function DocEditor({ projectId, doc, readOnly = false, onBack, onSaved }: DocEditorProps) {
   const [content, setContent] = useState<string>(doc.content || "");
   const [mode, setMode] = useState<DocMode>(readOnly ? "preview" : "split"); // investor langsung preview
   const [saving, setSaving] = useState<boolean>(false);
@@ -29,6 +31,7 @@ export default function DocEditor({ projectId, doc, readOnly = false, onBack }: 
     setSaving(true);
     try {
       await apiPatch(`/api/projects/${projectId}/docs/${doc.id}`, { content: text });
+      onSaved?.();
       return true;
     } catch {
       toast.error("Failed to save");

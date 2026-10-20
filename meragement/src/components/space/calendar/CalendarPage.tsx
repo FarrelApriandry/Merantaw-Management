@@ -4,6 +4,7 @@ import _withDragAndDrop from "react-big-calendar/lib/addons/dragAndDrop";
 import { format, parse, startOfWeek, getDay } from "date-fns";
 import { id as idLocale } from "date-fns/locale/id";
 import { apiGet, apiPost, apiPatch, apiDelete } from "@/lib/api-client";
+import { useSpaceEvents } from "@/lib/hooks/useSpaceEvents";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
@@ -83,6 +84,25 @@ export default function CalendarPage({ projectId }: CalendarPageProps) {
   const [newTitle, setNewTitle] = useState<string>("");
   const [dropAnim, setDropAnim] = useState<string | null>(null);
 
+  // Refetch tasks agregat + events, dipakai bersama oleh poll dan semua mutasi
+  // (DnD, resize, create, delete) supaya perubahan langsung terlihat.
+  const refreshTasks = useCallback(async (): Promise<void> => {
+    try {
+      const full = await apiGet<{ lists: SpaceList[]; tasks: (Task & { listId: string })[] }>(`/api/projects/${projectId}/tasks`);
+      const map: Record<string, string> = {};
+      for (const t of full.tasks) map[t.id] = t.listId;
+      setTaskListMap(map);
+      setTasks(full.tasks);
+    } catch { /* abaikan — poll berikutnya yang menyusul */ }
+  }, [projectId]);
+
+  const refreshEvents = useCallback(async (): Promise<void> => {
+    try {
+      const data = await apiGet<CalEvent[]>(`/api/projects/${projectId}/events`);
+      setEvents(data);
+    } catch { /* abaikan — poll berikutnya yang menyusul */ }
+  }, [projectId]);
+
   // Tasks agregat lintas lists via /api (poll 15s pengganti N onSnapshot)
   useEffect(() => {
     if (!projectId) return;
@@ -118,6 +138,14 @@ export default function CalendarPage({ projectId }: CalendarPageProps) {
     const t = setInterval(() => void load(), 15000);
     return () => { cancelled = true; clearInterval(t); };
   }, [projectId]);
+
+  // Sinyal SSE dari server: ada write di project ini → refetch keduanya.
+  // 2 detik sekali, amin sampai 2 query (tasks + events) — jauh lebih hemat dan
+  // lebih responsif daripada 7 view masing-masing polling sendiri.
+  useSpaceEvents({
+    projectId,
+    onChange: () => { void refreshTasks(); void refreshEvents(); },
+  });
 
   // Map to RBC format
   const calendarEvents: CalendarItem[] = useMemo(() => {
@@ -173,11 +201,14 @@ export default function CalendarPage({ projectId }: CalendarPageProps) {
       }
       setDropAnim(event.id);
       setTimeout(() => setDropAnim(null), 600);
+      // Refetch supaya posisi baru langsung cocok dengan server (bukan cuma state lokal).
+      await refreshTasks();
+      await refreshEvents();
       toast.success("Updated!", { id: toastId });
     } catch {
       toast.error("Failed to sync", { id: toastId });
     }
-  }, [projectId]);
+  }, [projectId, refreshTasks, refreshEvents]);
 
   // DnD: Resize event
   const handleEventResize = useCallback(async ({ event, start, end }: { event: CalendarItem; start: Date; end: Date }) => {
@@ -190,11 +221,14 @@ export default function CalendarPage({ projectId }: CalendarPageProps) {
       }
       setDropAnim(event.id);
       setTimeout(() => setDropAnim(null), 600);
+      // Refetch supaya perubahan durasi langsung cocok dengan server.
+      await refreshTasks();
+      await refreshEvents();
       toast.success("Updated!", { id: toastId });
     } catch {
       toast.error("Failed to sync", { id: toastId });
     }
-  }, [projectId]);
+  }, [projectId, refreshTasks, refreshEvents]);
 
   // Range selection → create event (investor: dinonaktifkan)
   const handleSelectSlot = (slotInfo: SlotInfo): void => {
@@ -214,6 +248,8 @@ export default function CalendarPage({ projectId }: CalendarPageProps) {
         color: "#8b5cf6",
       });
       setCreateOpen(false);
+      // Refetch supaya event baru langsung tampil (server return id final).
+      await refreshEvents();
       toast.success("Event created");
     } catch {
       toast.error("Failed to create event");
@@ -225,6 +261,8 @@ export default function CalendarPage({ projectId }: CalendarPageProps) {
     try {
       await apiDelete(`/api/projects/${projectId}/events/${selectedEvent.id}`);
       setSelectedEvent(null);
+      // Refetch supaya event hilang dari grid tanpa nunggu poll 15 detik.
+      await refreshEvents();
       toast.success("Event deleted");
     } catch {
       toast.error("Failed to delete event");

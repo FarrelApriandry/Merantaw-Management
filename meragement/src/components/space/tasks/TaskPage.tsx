@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { apiGet, apiPost, apiDelete } from "@/lib/api-client";
+import { useSpaceEvents } from "@/lib/hooks/useSpaceEvents";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { motion, AnimatePresence } from "framer-motion";
@@ -118,6 +119,21 @@ export default function TaskPage({ projectId }: TaskPageProps) {
       /* diabaikan — poll berikutnya yang menyusul */
     }
   }, [projectId]);
+
+  // Poll 10s (list tasks aktif, pengganti onSnapshot). Sebagai safety net kalau
+  // SSE terputus; SSE pulang lagi biasanya jauh lebih cepat dari 10 detik.
+  useEffect(() => {
+    if (!projectId || !activeListId) {
+      setServerTasks([]);
+      setLoading(false);
+      return;
+    }
+    const t = setInterval(() => void refreshTasks(), 10000);
+    return () => clearInterval(t);
+  }, [projectId, activeListId, refreshTasks]);
+
+  // SSE: sinyal dari server tiap ada write di project ini → refetch tasks aktif.
+  useSpaceEvents({ projectId, onChange: refreshTasks });
 
   useEffect(() => {
     if (!projectId || !activeListId) {

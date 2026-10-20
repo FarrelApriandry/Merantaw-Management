@@ -1,5 +1,6 @@
-import { useEffect, useState, type ComponentType, type ReactNode } from "react";
+import { useEffect, useState, useCallback, type ComponentType, type ReactNode } from "react";
 import { apiGet } from "@/lib/api-client";
+import { useSpaceEvents } from "@/lib/hooks/useSpaceEvents";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -33,6 +34,15 @@ export default function DashboardPage({ projectId }: DashboardPageProps) {
   const [loading, setLoading] = useState<boolean>(true);
 
   // Satu panggilan /overview (poll 15s pengganti 1+N onSnapshot)
+  const refresh = useCallback(async (): Promise<void> => {
+    try {
+      const data = await apiGet<Overview>(`/api/projects/${projectId}/overview`);
+      setOverview(data);
+    } catch { /* abaikan — poll berikutnya yang menyusul */ } finally {
+      setLoading(false);
+    }
+  }, [projectId]);
+
   useEffect(() => {
     if (!projectId) return;
     let cancelled = false;
@@ -48,6 +58,9 @@ export default function DashboardPage({ projectId }: DashboardPageProps) {
     const t = setInterval(() => void load(), 15000);
     return () => { cancelled = true; clearInterval(t); };
   }, [projectId]);
+
+  // SSE: ada write di project ini → refetch overview (angka statistik jadi seketika).
+  useSpaceEvents({ projectId, onChange: refresh });
 
   const project = overview?.project ?? null;
   const taskStats = overview?.taskStats ?? { total: 0, done: 0, rate: 0 };

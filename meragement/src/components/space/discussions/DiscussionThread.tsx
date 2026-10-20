@@ -25,6 +25,15 @@ export default function DiscussionThread({ projectId, discussion, currentUser, r
 
   const isAuthor = !!currentUser?.uid && currentUser.uid === discussion.authorId;
 
+  // Refetch dipakai bersama oleh poll, kirim balasan, dan tandai solusi — supaya
+  // setiap mutasi langsung terlihat tanpa nunggu tick berikutnya.
+  const refresh = async (): Promise<void> => {
+    try {
+      const list = await apiGet<Reply[]>(`/api/projects/${projectId}/discussions/${discussion.id}/replies`);
+      setReplies(list);
+    } catch { /* abaikan — poll berikutnya yang menyusul */ }
+  };
+
   useEffect(() => {
     let cancelled = false;
     const load = async (): Promise<void> => {
@@ -69,7 +78,8 @@ export default function DiscussionThread({ projectId, discussion, currentUser, r
       await apiPost(
         `/api/projects/${projectId}/discussions/${discussion.id}/replies/${replyId}/solution`,
       );
-      setReplies((prev) => prev.map((r) => ({ ...r, isSolution: r.id === replyId })));
+      // Refetch supaya isSolution & replyCount sinkron dengan server.
+      await refresh();
       toast.success("Marked as solution!");
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Gagal menandai solusi";

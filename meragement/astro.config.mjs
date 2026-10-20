@@ -12,7 +12,10 @@ export default defineConfig({
     webAnalytics: {
       enabled: true,
     },
-    maxDuration: 8,
+    // 300s = batas maksimal paket Vercel Hobby. Dibutuhkan oleh route SSE
+    // (/api/projects/[id]/stream) yang menahan koneksi ~285s per siklus;
+    // route biasa tetap selesai <1s jadi tidak terpengaruh.
+    maxDuration: 300,
   }),
   vite: {
       plugins: [tailwindcss()],
