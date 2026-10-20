@@ -31,6 +31,36 @@ interface TaskFilters {
   assignee: string;
 }
 
+// Kolom yang bisa di-sort. `dueDate` adalah default karena paling sering dipakai
+// mengurutkan backlog (yang paling dekat deadline di atas).
+type TaskSortKey = "dueDate" | "title" | "status" | "createdAt";
+type TaskSortDir = "asc" | "desc";
+
+interface TaskSort {
+  key: TaskSortKey;
+  dir: TaskSortDir;
+}
+
+const SORT_STORAGE_KEY = "meragement.taskSort";
+
+function loadSort(): TaskSort {
+  // Default: ascending by due date. Disimpan di localStorage biar pilihan user
+  // tidak berubah tiap kali pindah list / reload page.
+  const fallback: TaskSort = { key: "dueDate", dir: "asc" };
+  try {
+    const raw = window.localStorage.getItem(SORT_STORAGE_KEY);
+    if (!raw) return fallback;
+    const parsed = JSON.parse(raw) as Partial<TaskSort>;
+    const keys: TaskSortKey[] = ["dueDate", "title", "status", "createdAt"];
+    if (parsed.key && keys.includes(parsed.key) && (parsed.dir === "asc" || parsed.dir === "desc")) {
+      return { key: parsed.key, dir: parsed.dir };
+    }
+    return fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 export default function TaskPage({ projectId }: TaskPageProps) {
   const readOnly = useCurrentUser()?.role === "investor";
   const [serverTasks, setServerTasks] = useState<Task[]>([]);
@@ -43,6 +73,9 @@ export default function TaskPage({ projectId }: TaskPageProps) {
   const [loading, setLoading] = useState<boolean>(true);
   const [creatingRow, setCreatingRow] = useState<boolean>(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  // Sort berdiri sendiri dari filter: filter menyaring baris, sort mengurutkan.
+  const [sort, setSort] = useState<TaskSort>(loadSort);
 
   const [filters, setFilters] = useState<TaskFilters>({
     search: "",
@@ -268,6 +301,74 @@ export default function TaskPage({ projectId }: TaskPageProps) {
     });
   }, [combinedList, filters]);
 
+  // Field tanggal datang dari API sebagai ISO string, tapi sebagian data lama /
+  // optimistic row masih berupa { seconds } ala Firestore — dua bentuk itu
+  // dinormalkan dulu biar perbandingan tidak salah.
+  const toTime = (value: Task["dueDate"]): number | null => {
+    if (!value) return null;
+    if (value instanceof Date) return value.getTime();
+    if (typeof value === "object" && "seconds" in value && typeof value.seconds === "number") {
+      return value.seconds * 1000;
+    }
+    const t = new Date(value as string).getTime();
+    return Number.isNaN(t) ? null : t;
+  };
+
+  // Sort engine. Tanpa nilai (dueDate kosong) selalu ditengahkan di kedua arah;
+  // kalau tidak, baris tanpa deadline malah menempel di ujung secara acak dan
+  // posisinya bergeser tiap kali ada data baru masuk.
+  const sortedTasks = useMemo(() => {
+    const dir = sort.dir === "asc" ? 1 : -1;
+    return [...filteredTasks].sort((a, b) => {
+      switch (sort.key) {
+        case "title":
+          return (a.title || "").localeCompare(b.title || "") * dir;
+        case "status":
+          return (a.status || "").localeCompare(b.status || "") * dir;
+        case "createdAt": {
+          const ta = toTime(a.createdAt);
+          const tb = toTime(b.createdAt);
+          if (ta === null && tb === null) return 0;
+          if (ta === null) return -1;
+          if (tb === null) return 1;
+          return (ta - tb) * dir;
+        }
+        case "dueDate":
+        default: {
+          const ta = toTime(a.dueDate);
+          const tb = toTime(b.dueDate);
+          if (ta === null && tb === null) return 0;
+          if (ta === null) return -1;
+          if (tb === null) return 1;
+          return (ta - tb) * dir;
+        }
+      }
+    });
+  }, [filteredTasks, sort]);
+
+  // Klik kolom yang sama → balik arah; klik kolom lain → mulai dari ascending.
+  const toggleSort = (key: TaskSortKey): void => {
+    setSort((prev) => {
+      const next: TaskSort =
+        prev.key === key
+          ? { key, dir: prev.dir === "asc" ? "desc" : "asc" }
+          : { key, dir: "asc" };
+      try {
+        window.localStorage.setItem(SORT_STORAGE_KEY, JSON.stringify(next));
+      } catch { /* private mode / quota — sort tetap jalan, cuma tidak tersimpan */ }
+      return next;
+    });
+  };
+
+  // Panah indikator kolom aktif. Memakai dua segmen terpisah supaya arah tetap
+  // terbaca meski hanya satu yang menyala.
+  const SortIcon = ({ field }: { field: TaskSortKey }) => (
+    <span className="inline-flex flex-col ml-1 align-middle leading-none" aria-hidden="true">
+      <span className={sort.key === field && sort.dir === "asc" ? "text-blue-400" : "text-white/25"}>▲</span>
+      <span className={sort.key === field && sort.dir === "desc" ? "text-blue-400" : "text-white/25"}>▼</span>
+    </span>
+  );
+
   const activeList = lists.find((l) => l.id === activeListId);
 
   return (
@@ -386,11 +487,38 @@ export default function TaskPage({ projectId }: TaskPageProps) {
                 <thead className="bg-white/5 text-white/70">
                   <tr>
                     <th className="px-4 py-2"><SquareCheckBig size={16} /></th>
-                    <th className="px-4 py-2">Task</th>
+                    <th className="px-4 py-2">
+                      <button
+                        type="button"
+                        onClick={() => toggleSort("title")}
+                        aria-sort={sort.key === "title" ? (sort.dir === "asc" ? "ascending" : "descending") : "none"}
+                        className="inline-flex items-center hover:text-white transition-colors"
+                      >
+                        Task<SortIcon field="title" />
+                      </button>
+                    </th>
                     <th className="px-4 py-2">Category</th>
                     <th className="px-4 py-2">Assignee</th>
-                    <th className="px-4 py-2">Due</th>
-                    <th className="px-4 py-2">Status</th>
+                    <th className="px-4 py-2">
+                      <button
+                        type="button"
+                        onClick={() => toggleSort("dueDate")}
+                        aria-sort={sort.key === "dueDate" ? (sort.dir === "asc" ? "ascending" : "descending") : "none"}
+                        className="inline-flex items-center hover:text-white transition-colors"
+                      >
+                        Due<SortIcon field="dueDate" />
+                      </button>
+                    </th>
+                    <th className="px-4 py-2">
+                      <button
+                        type="button"
+                        onClick={() => toggleSort("status")}
+                        aria-sort={sort.key === "status" ? (sort.dir === "asc" ? "ascending" : "descending") : "none"}
+                        className="inline-flex items-center hover:text-white transition-colors"
+                      >
+                        Status<SortIcon field="status" />
+                      </button>
+                    </th>
                     <th className="px-4 py-2">Link</th>
                     <th className="px-4 py-2">Action</th>
                   </tr>
@@ -406,10 +534,10 @@ export default function TaskPage({ projectId }: TaskPageProps) {
                   )}
                   {loading ? (
                     <tr><td colSpan={8} className="py-4"><TableSkeleton rows={5} /></td></tr>
-                  ) : filteredTasks.length === 0 ? (
+                  ) : sortedTasks.length === 0 ? (
                     <tr><td colSpan={8} className="py-4"><EmptyState title="Tidak ada task" hint="Coba ubah filter pencarian." /></td></tr>
                   ) : (
-                    filteredTasks.map((task) => (
+                    sortedTasks.map((task) => (
                       <EditableTaskRow
                         key={task.id}
                         task={task}
