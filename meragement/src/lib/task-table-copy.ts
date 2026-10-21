@@ -128,8 +128,8 @@ export function generateMarkdownTable(
   const hasList = Boolean(options.includeList);
 
   const headers = hasList
-    ? ["No", "List", "Task", "Status", "Assignee", "Tenggat", "Kategori", "Link"]
-    : ["No", "Task", "Status", "Assignee", "Tenggat", "Kategori", "Link"];
+    ? ["No", "List", "Task", "Status", "Assignee", "Tenggat", "Kategori"]
+    : ["No", "Task", "Status", "Assignee", "Tenggat", "Kategori"];
 
   const rawRows: string[][] = items.map((item) => {
     const row = [
@@ -139,7 +139,6 @@ export function generateMarkdownTable(
       escapeMarkdownCell(item.assignees),
       escapeMarkdownCell(item.dueDate),
       escapeMarkdownCell(item.category),
-      escapeMarkdownCell(item.link),
     ];
     if (hasList) {
       row.splice(1, 0, escapeMarkdownCell(item.listName || "-"));
@@ -198,8 +197,8 @@ export function generateHtmlTable(
   const hasList = Boolean(options.includeList);
 
   const headers = hasList
-    ? ["No", "List", "Task", "Status", "Assignee", "Tenggat", "Kategori", "Link"]
-    : ["No", "Task", "Status", "Assignee", "Tenggat", "Kategori", "Link"];
+    ? ["No", "List", "Task", "Status", "Assignee", "Tenggat", "Kategori"]
+    : ["No", "Task", "Status", "Assignee", "Tenggat", "Kategori"];
 
   const thStyles =
     "border: 1px solid #cbd5e1; background-color: #0f172a; color: #ffffff; padding: 8px 12px; font-weight: 600; text-align: left;";
@@ -211,11 +210,6 @@ export function generateHtmlTable(
   const rowsHtml = items
     .map((item, idx) => {
       const bg = idx % 2 === 0 ? "#ffffff" : "#f8fafc";
-      const linkCell =
-        item.link && item.link !== "-"
-          ? `<a href="${item.link}" target="_blank" rel="noopener noreferrer" style="color: #2563eb; text-decoration: underline;">${item.link}</a>`
-          : "-";
-
       const cols = [
         String(item.index),
         item.title,
@@ -223,7 +217,6 @@ export function generateHtmlTable(
         item.assignees,
         item.dueDate,
         item.category,
-        linkCell,
       ];
 
       if (hasList) {
@@ -231,11 +224,7 @@ export function generateHtmlTable(
       }
 
       return `<tr style="background-color: ${bg};">${cols
-        .map((c, i) => {
-          // Khusus kolom link, jangan re-escape tag <a>
-          const isLink = hasList ? i === 7 : i === 6;
-          return `<td style="${tdStyles}">${isLink ? c : escapeHtml(c)}</td>`;
-        })
+        .map((c) => `<td style="${tdStyles}">${escapeHtml(c)}</td>`)
         .join("")}</tr>`;
     })
     .join("");
@@ -290,9 +279,6 @@ export function generateTextList(
     if (item.category && item.category !== "-") {
       lines.push(`   • Kategori : ${item.category}`);
     }
-    if (item.link && item.link !== "-") {
-      lines.push(`   • Link     : ${item.link}`);
-    }
     lines.push("");
   }
 
@@ -317,8 +303,8 @@ export function generateCsv(
   const hasList = Boolean(options.includeList);
 
   const headers = hasList
-    ? ["No", "List", "Task", "Status", "Assignee", "Tenggat", "Kategori", "Link"]
-    : ["No", "Task", "Status", "Assignee", "Tenggat", "Kategori", "Link"];
+    ? ["No", "List", "Task", "Status", "Assignee", "Tenggat", "Kategori"]
+    : ["No", "Task", "Status", "Assignee", "Tenggat", "Kategori"];
 
   const escapeCsv = (val: string): string => {
     if (val.includes(",") || val.includes('"') || val.includes("\n")) {
@@ -336,7 +322,6 @@ export function generateCsv(
       item.assignees,
       item.dueDate,
       item.category,
-      item.link,
     ];
     if (hasList) {
       row.splice(1, 0, item.listName || "-");
