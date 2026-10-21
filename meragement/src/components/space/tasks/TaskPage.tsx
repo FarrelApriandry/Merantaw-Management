@@ -4,9 +4,10 @@ import { useSpaceEvents } from "@/lib/hooks/useSpaceEvents";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { motion, AnimatePresence } from "framer-motion";
-import { Trash2, Plus, SquareCheckBig, Search, List } from "lucide-react";
+import { Trash2, Plus, SquareCheckBig, Search, List, Copy } from "lucide-react";
 import AddTaskRow from "./AddTaskRow";
 import EditableTaskRow from "./EditableTaskRow";
+import CopyTasksDialog from "./CopyTasksDialog";
 import { toast } from "sonner";
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser";
 import { TableSkeleton, EmptyState } from "@/components/ui/feedback";
@@ -73,6 +74,7 @@ export default function TaskPage({ projectId }: TaskPageProps) {
   const [loading, setLoading] = useState<boolean>(true);
   const [creatingRow, setCreatingRow] = useState<boolean>(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [copyDialogOpen, setCopyDialogOpen] = useState<boolean>(false);
 
   // Sort berdiri sendiri dari filter: filter menyaring baris, sort mengurutkan.
   const [sort, setSort] = useState<TaskSort>(loadSort);
@@ -469,17 +471,39 @@ export default function TaskPage({ projectId }: TaskPageProps) {
               </Select>
             </div>
 
-            {/* ACTIONS — disembunyikan untuk investor (read-only) */}
-            {!readOnly && (
-            <div className="flex gap-2 mb-4">
-              <Button onClick={() => setCreatingRow((s) => !s)}>
-                <Plus size={16} /> Add Task
-              </Button>
-              <Button variant="destructive" disabled={!selected.size} onClick={handleBatchDelete}>
-                <Trash2 size={16} /> Delete ({selected.size})
-              </Button>
+            {/* ACTIONS */}
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+              <div className="flex flex-wrap items-center gap-2">
+                {!readOnly && (
+                  <>
+                    <Button onClick={() => setCreatingRow((s) => !s)}>
+                      <Plus size={16} /> Add Task
+                    </Button>
+                    <Button variant="destructive" disabled={!selected.size} onClick={handleBatchDelete}>
+                      <Trash2 size={16} /> Delete ({selected.size})
+                    </Button>
+                  </>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setCopyDialogOpen(true)}
+                  className="bg-white/5 border-white/10 hover:bg-white/10 text-white"
+                  title="Salin tabel tasks ke clipboard"
+                >
+                  <Copy size={16} className="mr-1.5" />
+                  Salin Tabel
+                  {selected.size > 0 && (
+                    <span className="ml-1.5 px-1.5 py-0.5 text-xs bg-blue-500/20 text-blue-300 rounded-md border border-blue-500/30">
+                      {selected.size} dipilih
+                    </span>
+                  )}
+                </Button>
+              </div>
             </div>
-            )}
 
             {/* TABLE */}
             <motion.div layout className="overflow-x-auto rounded-xl border border-white/10">
@@ -558,6 +582,18 @@ export default function TaskPage({ projectId }: TaskPageProps) {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <CopyTasksDialog
+        open={copyDialogOpen}
+        onOpenChange={setCopyDialogOpen}
+        project={project}
+        projectId={projectId}
+        lists={lists}
+        activeList={activeList}
+        currentTasks={sortedTasks}
+        selectedTaskIds={selected}
+        members={members}
+      />
     </div>
   );
 }
