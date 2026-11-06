@@ -1,5 +1,5 @@
 // src/pages/api/projects/[id]/discussions/[discId].ts —
-// PATCH (member: hanya title/content miliknya; status/solutionId = author/admin)
+// PATCH (hanya author diskusi atau admin yang boleh update)
 // + DELETE (admin only, cascade replies via FK).
 import type { APIRoute } from "astro";
 import { db } from "@/lib/db";
@@ -35,10 +35,7 @@ export const PATCH: APIRoute = async ({ request, params }) => {
   }
   const isAuthor = d.authorId === me.id;
   if (me.role !== "admin" && !isAuthor) {
-    // member non-author: hanya title/content, status/solutionId dilarang
-    if (body.status !== undefined || body.solutionId !== undefined) {
-      return json({ error: "forbidden: status/solution hanya author/admin" }, 403);
-    }
+    return json({ error: "forbidden: hanya author diskusi atau admin yang dapat mengedit diskusi" }, 403);
   }
   const set: Record<string, unknown> = { updatedAt: new Date() };
   if (body.title !== undefined) {
@@ -46,14 +43,17 @@ export const PATCH: APIRoute = async ({ request, params }) => {
     set.title = body.title.trim();
   }
   if (body.content !== undefined) set.content = body.content;
-  if (me.role === "admin" || isAuthor) {
-    if (body.status !== undefined) {
-      if (body.status !== "open" && body.status !== "solved") {
-        return json({ error: "status harus open|solved" }, 400);
-      }
-      set.status = body.status;
+  if (body.status !== undefined) {
+    if (body.status !== "open" && body.status !== "solved") {
+      return json({ error: "status harus open|solved" }, 400);
     }
-    if (body.solutionId !== undefined) set.solutionId = body.solutionId;
+    set.status = body.status;
+  }
+  if (body.solutionId !== undefined) {
+    if (body.solutionId !== null && !isUuid(body.solutionId)) {
+      return json({ error: "solutionId tidak valid" }, 400);
+    }
+    set.solutionId = body.solutionId;
   }
   const updated = await db.update(discussions).set(set).where(eq(discussions.id, d.id)).returning();
   return json(updated[0], 200);

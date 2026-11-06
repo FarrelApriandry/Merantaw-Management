@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { apiGet, apiPost, apiDelete } from "@/lib/api-client";
+import { useSmartPolling } from "@/lib/hooks/useSmartPolling";
+import { useSpaceEvents } from "@/lib/hooks/useSpaceEvents";
 import DocEditor from "./DocEditor";
 import { getTemplate } from "./templates";
 import {
@@ -57,19 +59,14 @@ export default function DocsPage({ projectId }: DocsPageProps) {
 
   useEffect(() => {
     if (!projectId) return;
-    let cancelled = false;
-    const run = async (): Promise<void> => {
-      try {
-        const list = await apiGet<DocItem[]>(`/api/projects/${projectId}/docs`);
-        if (!cancelled) setDocs(list);
-      } catch { /* abaikan */ } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-    void run();
-    const t = setInterval(() => void run(), 10000);
-    return () => { cancelled = true; clearInterval(t); };
-  }, [projectId]);
+    void load();
+  }, [projectId, load]);
+
+  // Fallback poll cerdas 45s (pause saat tab hidden)
+  useSmartPolling(load, { intervalMs: 45000, enabled: !!projectId });
+
+  // Realtime update via SSE
+  useSpaceEvents({ projectId, onChange: () => void load() });
 
   const filtered = docs.filter((d) => {
     if (filterCat && d.category !== filterCat) return false;

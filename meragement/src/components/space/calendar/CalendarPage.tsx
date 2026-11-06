@@ -5,6 +5,7 @@ import { format, parse, startOfWeek, getDay } from "date-fns";
 import { id as idLocale } from "date-fns/locale/id";
 import { apiGet, apiPost, apiPatch, apiDelete } from "@/lib/api-client";
 import { useSpaceEvents } from "@/lib/hooks/useSpaceEvents";
+import { useSmartPolling } from "@/lib/hooks/useSmartPolling";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
@@ -103,48 +104,29 @@ export default function CalendarPage({ projectId }: CalendarPageProps) {
     } catch { /* abaikan — poll berikutnya yang menyusul */ }
   }, [projectId]);
 
-  // Tasks agregat lintas lists via /api (poll 15s pengganti N onSnapshot)
+  // Initial load saat projectId berubah
   useEffect(() => {
     if (!projectId) return;
-    let cancelled = false;
-    const load = async (): Promise<void> => {
-      try {
-        const full = await apiGet<{ lists: SpaceList[]; tasks: (Task & { listId: string })[] }>(`/api/projects/${projectId}/tasks`);
-        const map: Record<string, string> = {};
-        for (const t of full.tasks) map[t.id] = t.listId;
-        if (cancelled) return;
-        setTaskListMap(map);
-        setTasks(full.tasks);
-      } catch {
-        /* abaikan */
-      }
-    };
-    void load();
-    const t = setInterval(() => void load(), 15000);
-    return () => { cancelled = true; clearInterval(t); };
-  }, [projectId]);
+    void refreshTasks();
+    void refreshEvents();
+  }, [projectId, refreshTasks, refreshEvents]);
 
-  // Events via API (poll 15s)
-  useEffect(() => {
-    if (!projectId) return;
-    let cancelled = false;
-    const load = async (): Promise<void> => {
-      try {
-        const data = await apiGet<CalEvent[]>(`/api/projects/${projectId}/events`);
-        if (!cancelled) setEvents(data);
-      } catch { /* abaikan */ }
-    };
-    void load();
-    const t = setInterval(() => void load(), 15000);
-    return () => { cancelled = true; clearInterval(t); };
-  }, [projectId]);
+  // Polling cerdas 60s: safety net jika SSE terputus, otomatis pause saat tab background
+  useSmartPolling(
+    () => {
+      void refreshTasks();
+      void refreshEvents();
+    },
+    { intervalMs: 60000, enabled: !!projectId },
+  );
 
-  // Sinyal SSE dari server: ada write di project ini → refetch keduanya.
-  // 2 detik sekali, amin sampai 2 query (tasks + events) — jauh lebih hemat dan
-  // lebih responsif daripada 7 view masing-masing polling sendiri.
+  // Sinyal SSE dari server: ada write di project ini → refetch keduanya seketika (<2.5s)
   useSpaceEvents({
     projectId,
-    onChange: () => { void refreshTasks(); void refreshEvents(); },
+    onChange: () => {
+      void refreshTasks();
+      void refreshEvents();
+    },
   });
 
   // Map to RBC format

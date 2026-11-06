@@ -16,6 +16,8 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { apiGet, apiPost } from "@/lib/api-client";
+import { useSmartPolling } from "@/lib/hooks/useSmartPolling";
+import { useSpaceEvents } from "@/lib/hooks/useSpaceEvents";
 import DiscussionThread from "./DiscussionThread";
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser";
 import { CardSkeleton, EmptyState } from "@/components/ui/feedback";
@@ -50,9 +52,13 @@ export default function DiscussionsPage({ projectId }: DiscussionsPageProps) {
   useEffect(() => {
     if (!projectId) return;
     void load();
-    const t = setInterval(() => void load(), 10000);
-    return () => clearInterval(t);
   }, [projectId, load]);
+
+  // Fallback poll 45s cerdas (pause otomatis saat tab background)
+  useSmartPolling(load, { intervalMs: 45000, enabled: !!projectId });
+
+  // Realtime update via SSE
+  useSpaceEvents({ projectId, onChange: () => void load() });
 
   const handleCreate = async (): Promise<void> => {
     if (!newTitle.trim() || !newContent.trim()) return;

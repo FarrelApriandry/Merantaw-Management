@@ -31,6 +31,7 @@ export const auth = betterAuth({
   }),
   emailAndPassword: {
     enabled: true,
+    disableSignUp: true, // Nonaktifkan pendaftaran publik mandiri; akun hanya dibuat via admin
     minPasswordLength: 8,
     password: {
       hash: (password: string) => bcrypt.hash(password, 10),
@@ -44,8 +45,8 @@ export const auth = betterAuth({
   },
   user: {
     additionalFields: {
-      role: { type: "string", defaultValue: "member", input: true },
-      isActive: { type: "boolean", defaultValue: true, input: true },
+      role: { type: "string", defaultValue: "member", input: false },
+      isActive: { type: "boolean", defaultValue: true, input: false },
     },
   },
   plugins: [

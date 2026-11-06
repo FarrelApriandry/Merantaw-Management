@@ -29,5 +29,5 @@ pnpm-debug.log*
 .agents/
 
 # local scripts (insert tasks, verifikasi) — jangan ke-commit
-test/
+test/*.py
 .vercel

@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, type ComponentType, type ReactNode } from "react";
 import { apiGet } from "@/lib/api-client";
 import { useSpaceEvents } from "@/lib/hooks/useSpaceEvents";
+import { useSmartPolling } from "@/lib/hooks/useSmartPolling";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -45,19 +46,11 @@ export default function DashboardPage({ projectId }: DashboardPageProps) {
 
   useEffect(() => {
     if (!projectId) return;
-    let cancelled = false;
-    const load = async (): Promise<void> => {
-      try {
-        const data = await apiGet<Overview>(`/api/projects/${projectId}/overview`);
-        if (!cancelled) { setOverview(data); setLoading(false); }
-      } catch {
-        if (!cancelled) setLoading(false);
-      }
-    };
-    void load();
-    const t = setInterval(() => void load(), 15000);
-    return () => { cancelled = true; clearInterval(t); };
-  }, [projectId]);
+    void refresh();
+  }, [projectId, refresh]);
+
+  // Polling cerdas 60s: fallback jika SSE terputus, pause saat tab background
+  useSmartPolling(refresh, { intervalMs: 60000, enabled: !!projectId });
 
   // SSE: ada write di project ini → refetch overview (angka statistik jadi seketika).
   useSpaceEvents({ projectId, onChange: refresh });

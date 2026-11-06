@@ -12,7 +12,8 @@ import ProjectCard from "../dashboard/ProjectCard";
 import TaskCard from "../dashboard/TaskCard";
 import { apiGet } from "@/lib/api-client";
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser";
-import { useState, useEffect, type JSX } from "react";
+import { useSmartPolling } from "@/lib/hooks/useSmartPolling";
+import { useState, useEffect, useCallback, type JSX } from "react";
 import { CardSkeleton, EmptyState } from "@/components/ui/feedback";
 import type { Project, Task } from "@/lib/types";
 
@@ -31,59 +32,48 @@ export default function DashboardContent(): JSX.Element {
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
 
-    useEffect(() => {
-        if (!user?.uid) {
+    interface DashboardSummary {
+      projects: Project[];
+      progressByProject: Record<string, number>;
+      totalCount: number;
+      doneCount: number;
+      recentTasks: TaskWithProject[];
+    }
+
+    const userUid = user?.uid;
+
+    const fetchData = useCallback(async (): Promise<void> => {
+        if (!userUid) {
             setLoading(false);
             return;
         }
-        let cancelled = false;
-        const fetchData = async (): Promise<void> => {
-            try {
-                setLoading(true);
-                setError(null);
-                const scope = user.role === "admin" ? "all" : "mine";
-                const spaceData = await apiGet<Project[]>(`/api/projects?scope=${scope}`);
-                if (cancelled) return;
-                setSpace(spaceData);
+        try {
+            setError(null);
+            // 1 Panggilan agregat menggantikan 1 + N waterfall requests
+            const data = await apiGet<DashboardSummary>("/api/dashboard/summary");
+            setSpace(data.projects);
+            setProgressByProject(data.progressByProject);
+            setTotalCount(data.totalCount);
+            setDoneCount(data.doneCount);
+            setRecentTasks(data.recentTasks);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to load data");
+        } finally {
+            setLoading(false);
+        }
+    }, [userUid]);
 
-                // Agregat tasks lintas project untuk progress + recent list
-                const per: TaskWithProject[][] = await Promise.all(
-                    spaceData.map(async (p) => {
-                        try {
-                            const d = await apiGet<{ tasks: Task[] }>(`/api/projects/${p.id}/tasks`);
-                            return (d.tasks ?? []).map((t) => ({ ...t, projectTitle: p.title }));
-                        } catch {
-                            return [];
-                        }
-                    }),
-                );
-                if (cancelled) return;
-                const all = per.flat();
-                const prog: Record<string, number> = {};
-                for (const p of spaceData) {
-                    const mine = all.filter((t) => (t as { listId?: string } && (t.projectTitle === p.title)));
-                    const done = mine.filter((t) => t.status === "done").length;
-                    prog[p.id] = mine.length ? Math.round((done / mine.length) * 100) : 0;
-                }
-                setProgressByProject(prog);
-                setTotalCount(all.length);
-                setDoneCount(all.filter((t) => t.status === "done").length);
-                const sorted = [...all].sort((a, b) => {
-                    const da = a.updatedAt ? new Date(a.updatedAt as string).getTime() : 0;
-                    const dbb = b.updatedAt ? new Date(b.updatedAt as string).getTime() : 0;
-                    return dbb - da;
-                });
-                setRecentTasks(sorted.slice(0, 10));
-            } catch (err) {
-                if (!cancelled) setError(err instanceof Error ? err.message : "Failed to load data");
-            } finally {
-                if (!cancelled) setLoading(false);
-            }
-        };
-
+    useEffect(() => {
+        if (!userUid) return;
+        setLoading(true);
         void fetchData();
-        return () => { cancelled = true; };
-    }, [user?.uid, user?.role]);
+    }, [userUid, fetchData]);
+
+    // Polling cerdas 60s: refresh otomatis saat tab aktif, pause saat tab background
+    useSmartPolling(fetchData, {
+        intervalMs: 60000,
+        enabled: !!userUid,
+    });
 
     const activeSpace = space.filter((s) => s.status === "active").length;
     const rate = totalCount ? Math.round((doneCount / totalCount) * 100) : 0;

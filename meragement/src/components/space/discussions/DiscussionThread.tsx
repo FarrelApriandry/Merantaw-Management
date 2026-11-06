@@ -1,5 +1,5 @@
 // src/components/space/discussions/DiscussionThread.tsx — P1: author-check + error handling + rollback aman.
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { motion, AnimatePresence } from "framer-motion";
@@ -7,6 +7,8 @@ import { ArrowLeft, CheckCircle2, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { apiGet, apiPost, apiPatch } from "@/lib/api-client";
+import { useSmartPolling } from "@/lib/hooks/useSmartPolling";
+import { useSpaceEvents } from "@/lib/hooks/useSpaceEvents";
 import { toast } from "sonner";
 import type { Discussion, Reply, StoredUser } from "@/lib/types";
 
@@ -25,27 +27,23 @@ export default function DiscussionThread({ projectId, discussion, currentUser, r
 
   const isAuthor = !!currentUser?.uid && currentUser.uid === discussion.authorId;
 
-  // Refetch dipakai bersama oleh poll, kirim balasan, dan tandai solusi — supaya
-  // setiap mutasi langsung terlihat tanpa nunggu tick berikutnya.
-  const refresh = async (): Promise<void> => {
+  // Refetch dipakai bersama oleh poll, kirim balasan, tandai solusi, dan sinyal SSE
+  const refresh = useCallback(async (): Promise<void> => {
     try {
       const list = await apiGet<Reply[]>(`/api/projects/${projectId}/discussions/${discussion.id}/replies`);
       setReplies(list);
     } catch { /* abaikan — poll berikutnya yang menyusul */ }
-  };
+  }, [projectId, discussion.id]);
 
   useEffect(() => {
-    let cancelled = false;
-    const load = async (): Promise<void> => {
-      try {
-        const list = await apiGet<Reply[]>(`/api/projects/${projectId}/discussions/${discussion.id}/replies`);
-        if (!cancelled) setReplies(list);
-      } catch { /* abaikan */ }
-    };
-    void load();
-    const t = setInterval(() => void load(), 10000);
-    return () => { cancelled = true; clearInterval(t); };
-  }, [projectId, discussion.id]);
+    void refresh();
+  }, [refresh]);
+
+  // Fallback poll cerdas 45s (pause saat tab hidden)
+  useSmartPolling(refresh, { intervalMs: 45000, enabled: !!projectId && !!discussion.id });
+
+  // Realtime update via SSE
+  useSpaceEvents({ projectId, onChange: () => void refresh() });
 
   const handleReply = async (): Promise<void> => {
     if (!replyContent.trim() || sending) return;

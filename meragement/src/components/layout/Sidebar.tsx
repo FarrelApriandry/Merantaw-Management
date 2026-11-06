@@ -3,12 +3,13 @@ import {
   MessageCircle, Folder, ChevronDown, ChevronLeft, Earth,
   List, Plus, BookOpen, CalendarDays,
 } from "lucide-react";
-import { useState, useEffect, type ReactNode } from "react";
+import { useState, useEffect, useCallback, useMemo, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import { motion, AnimatePresence } from "framer-motion";
 import { useCurrentUser } from "@/lib/hooks/useCurrentUser";
 import { apiGet, apiPost } from "@/lib/api-client";
+import { useSmartPolling } from "@/lib/hooks/useSmartPolling";
 import CreateListModal from "@/components/space/CreateListModal";
 import type { Project, SpaceList } from "@/lib/types";
 
@@ -50,60 +51,72 @@ export default function Sidebar({ isOpen, toggleSidebar }: SidebarProps) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPath]);
-  useEffect(() => {
-    if (!isClient || !user) return;
-    let cancelled = false;
-    const scope = user.role === "admin" ? "all" : "mine";
-    const load = async (): Promise<void> => {
-      try {
-        const rows = await apiGet<Project[]>(`/api/projects?scope=${scope}`);
-        if (cancelled) return;
-        setSpaces(
-          rows.map((d) => ({
-            id: d.id,
-            shortCall: d.shortCall || "N/A",
-            title: d.title || "(no title)",
-          })),
-        );
-        setSpacesError(null);
-        setLoadingSpaces(false);
-      } catch (err) {
-        if (cancelled) return;
-        setSpaces([]);
-        setSpacesError(err instanceof Error ? err : new Error("failed"));
-        setLoadingSpaces(false);
-      }
-    };
-    void load();
-    const t = setInterval(() => void load(), 15000);
-    return () => {
-      cancelled = true;
-      clearInterval(t);
-    };
-  }, [isClient, user?.uid, user?.role]);
+  const userUid = user?.uid;
+  const userRole = user?.role;
 
-  // Fetch lists saat space dibuka (poll 15s)
+  const loadSpaces = useCallback(async (): Promise<void> => {
+    if (!isClient || !userUid) return;
+    const scope = userRole === "admin" ? "all" : "mine";
+    try {
+      const rows = await apiGet<Project[]>(`/api/projects?scope=${scope}`);
+      setSpaces(
+        rows.map((d) => ({
+          id: d.id,
+          shortCall: d.shortCall || "N/A",
+          title: d.title || "(no title)",
+        })),
+      );
+      setSpacesError(null);
+      setLoadingSpaces(false);
+    } catch (err) {
+      setSpaces([]);
+      setSpacesError(err instanceof Error ? err : new Error("failed"));
+      setLoadingSpaces(false);
+    }
+  }, [isClient, userUid, userRole]);
+
   useEffect(() => {
-    const timers: ReturnType<typeof setInterval>[] = [];
-    let cancelled = false;
-    Object.keys(openSpaces).forEach((spaceId) => {
-      if (!openSpaces[spaceId]) return;
-      const load = async (): Promise<void> => {
+    if (!isClient || !userUid) return;
+    void loadSpaces();
+  }, [isClient, userUid, userRole, loadSpaces]);
+
+  // Polling cerdas 60s: pause otomatis saat tab background/di-minimize
+  useSmartPolling(loadSpaces, {
+    intervalMs: 60000,
+    enabled: isClient && !!userUid,
+  });
+
+  const openSpacesKey = useMemo(
+    () => Object.keys(openSpaces).filter((id) => openSpaces[id]).sort().join(","),
+    [openSpaces],
+  );
+
+  const loadOpenSpaceLists = useCallback(async (): Promise<void> => {
+    const activeSpaceIds = Object.keys(openSpaces).filter((id) => openSpaces[id]);
+    if (!activeSpaceIds.length) return;
+    await Promise.all(
+      activeSpaceIds.map(async (spaceId) => {
         try {
           const data = await apiGet<SpaceList[]>(`/api/projects/${spaceId}/lists`);
-          if (!cancelled) setSpaceLists((prev) => ({ ...prev, [spaceId]: data }));
+          setSpaceLists((prev) => ({ ...prev, [spaceId]: data }));
         } catch {
           /* abaikan — tampilkan cache lama */
         }
-      };
-      void load();
-      timers.push(setInterval(() => void load(), 15000));
-    });
-    return () => {
-      cancelled = true;
-      timers.forEach((t) => clearInterval(t));
-    };
+      }),
+    );
   }, [openSpaces]);
+
+  // Fetch segera saat accordion space dibuka
+  useEffect(() => {
+    if (!openSpacesKey) return;
+    void loadOpenSpaceLists();
+  }, [openSpacesKey, loadOpenSpaceLists]);
+
+  // Fallback poll 60s hanya untuk space yang sedang terbuka (pause saat tab hidden)
+  useSmartPolling(loadOpenSpaceLists, {
+    intervalMs: 60000,
+    enabled: !!openSpacesKey,
+  });
 
   const toggleSpace = (id: string): void =>
     setOpenSpaces((prev) => ({ ...prev, [id]: !prev[id] }));

@@ -1,11 +1,9 @@
 // src/lib/hooks/useSpaceEvents.ts — subscribe SSE dari /api/projects/<id>/stream.
 //
-// Pengganti onSnapshot: server kirim `event: change` tiap ada write di project ini,
-// hook memanggil `onChange` supaya view refetch. Ini MELENGKAPI polling, bukan
-// menggantinya — kalau SSE putus (sleep laptop, CF reconnect, tab lama) polling
-// 10-15 detik di masing-masing view tetap jadi jaring pengaman.
-//
-// Fallback senyap: EventSource tidak tersedia / 401 / 403 → tidak melakukan apa pun.
+// Optimasi Resource:
+// - Hanya membuka koneksi EventSource saat tab aktif/terlihat (document.visibilityState === "visible").
+// - Saat tab di-minimize / pindah tab, koneksi langsung ditutup rapi agar serverless compute Vercel tidak berjalan di background.
+// - Saat kembali ke tab, otomatis reconnect dan langsung memicu onChange() agar view ter-update seketika.
 import { useEffect, useRef } from "react";
 
 export interface UseSpaceEventsOptions {
@@ -29,8 +27,21 @@ export function useSpaceEvents({ projectId, onChange, enabled = true }: UseSpace
     let source: EventSource | null = null;
     let retryTimer: ReturnType<typeof setTimeout> | null = null;
 
+    const cleanupSource = (): void => {
+      if (retryTimer) {
+        clearTimeout(retryTimer);
+        retryTimer = null;
+      }
+      if (source) {
+        source.close();
+        source = null;
+      }
+    };
+
     const connect = (): void => {
-      if (disposed) return;
+      if (disposed || document.hidden) return;
+      cleanupSource();
+
       source = new EventSource(`/api/projects/${projectId}/stream`);
 
       // `init` = baseline dari server; cukup diabaikan, view sudah memuat data sendiri.
@@ -42,10 +53,10 @@ export function useSpaceEvents({ projectId, onChange, enabled = true }: UseSpace
 
       source.addEventListener("error", () => {
         // EventSource auto-reconnect sendiri; handler hanya menandai supaya
-        // cleanup tidak membiarkan listener menggantung.
+        // cleanup tidak membiarkan listener menggantung jika sudah CLOSED.
         if (source?.readyState === EventSource.CLOSED) {
           source = null;
-          if (!disposed) {
+          if (!disposed && !document.hidden) {
             // Coba lagi setelah jeda pendek (server kadang tertidur di fluid compute).
             retryTimer = setTimeout(connect, 5000);
           }
@@ -53,12 +64,26 @@ export function useSpaceEvents({ projectId, onChange, enabled = true }: UseSpace
       });
     };
 
-    connect();
+    const handleVisibility = (): void => {
+      if (document.hidden) {
+        // Tab tidak aktif -> tutup koneksi agar hemat Vercel Compute & Fast Origin Transfer
+        cleanupSource();
+      } else {
+        // Tab aktif kembali -> langsung refresh data dan buka kembali SSE
+        onChangeRef.current();
+        connect();
+      }
+    };
+
+    if (!document.hidden) {
+      connect();
+    }
+    document.addEventListener("visibilitychange", handleVisibility);
 
     return () => {
       disposed = true;
-      if (retryTimer) clearTimeout(retryTimer);
-      source?.close();
+      document.removeEventListener("visibilitychange", handleVisibility);
+      cleanupSource();
     };
   }, [projectId, enabled]);
 }

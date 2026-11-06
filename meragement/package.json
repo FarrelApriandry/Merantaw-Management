@@ -8,7 +8,8 @@
     "preview": "astro preview",
     "astro": "astro",
     "check": "astro check",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "tsx test/test_task_table_copy.ts && tsx test/test_request_optimization.ts"
   },
   "dependencies": {
     "@astrojs/check": "^0.9.10",

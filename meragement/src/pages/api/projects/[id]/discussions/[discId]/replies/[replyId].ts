@@ -1,10 +1,11 @@
 // src/pages/api/projects/[id]/discussions/[discId]/replies/[replyId].ts —
-// PATCH (isSolution hanya author/admin) + DELETE (admin|member) +
-// POST /solution (author menandai solusi: reset prev, set baru, status solved).
+// PATCH (content: reply author/admin; isSolution: discussion author/admin)
+// + DELETE (reply author/admin)
+// + POST /solution (author diskusi/admin menandai solusi: reset prev, set baru, status solved).
 import type { APIRoute } from "astro";
 import { db } from "@/lib/db";
 import { discussions, replies } from "@/lib/db/schema";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { requireUser, canWriteProject, getProjectRow, json, isUuid } from "@/lib/server-auth";
 
 export const prerender = false;
@@ -41,18 +42,46 @@ export const PATCH: APIRoute = async ({ request, params }) => {
   } catch {
     return json({ error: "invalid json" }, 400);
   }
-  const isAuthor = s.d.authorId === me.id;
-  if (body.isSolution !== undefined && me.role !== "admin" && !isAuthor) {
-    return json({ error: "forbidden: isSolution hanya author/admin" }, 403);
-  }
+
+  const isReplyAuthor = s.r.authorId === me.id;
+  const isDiscAuthor = s.d.authorId === me.id;
+  const isAdminUser = me.role === "admin";
+
   const set: Record<string, unknown> = {};
+
   if (body.content !== undefined) {
+    if (!isAdminUser && !isReplyAuthor) {
+      return json({ error: "forbidden: hanya pembuat balasan atau admin yang dapat mengedit konten" }, 403);
+    }
     if (!body.content.trim()) return json({ error: "content tidak boleh kosong" }, 400);
     set.content = body.content.trim();
   }
-  if (body.isSolution !== undefined && (me.role === "admin" || isAuthor)) {
+
+  if (body.isSolution !== undefined) {
+    if (!isAdminUser && !isDiscAuthor) {
+      return json({ error: "forbidden: hanya author diskusi atau admin yang dapat mengubah status solusi" }, 403);
+    }
     set.isSolution = !!body.isSolution;
+    if (body.isSolution) {
+      if (s.d.solutionId && s.d.solutionId !== s.r.id) {
+        await db.update(replies).set({ isSolution: false }).where(eq(replies.id, s.d.solutionId));
+      }
+      await db
+        .update(discussions)
+        .set({ status: "solved", solutionId: s.r.id, updatedAt: new Date() })
+        .where(eq(discussions.id, s.d.id));
+    } else if (s.d.solutionId === s.r.id) {
+      await db
+        .update(discussions)
+        .set({ status: "open", solutionId: null, updatedAt: new Date() })
+        .where(eq(discussions.id, s.d.id));
+    }
   }
+
+  if (!Object.keys(set).length) {
+    return json({ error: "tidak ada data yang diperbarui" }, 400);
+  }
+
   const updated = await db.update(replies).set(set).where(eq(replies.id, s.r.id)).returning();
   return json(updated[0], 200);
 };
@@ -65,6 +94,12 @@ export const DELETE: APIRoute = async ({ request, params }) => {
   if (!canWriteProject(me, p)) return json({ error: "forbidden" }, 403);
   const s = await scoped(p.id, params.discId ?? "", params.replyId ?? "");
   if (!s?.r) return json({ error: "reply tidak ditemukan" }, 404);
+
+  const isReplyAuthor = s.r.authorId === me.id;
+  if (me.role !== "admin" && !isReplyAuthor) {
+    return json({ error: "forbidden: hanya pembuat balasan atau admin yang dapat menghapus balasan" }, 403);
+  }
+
   if (s.r.isSolution) {
     await db
       .update(discussions)
@@ -72,6 +107,9 @@ export const DELETE: APIRoute = async ({ request, params }) => {
       .where(eq(discussions.id, s.d.id));
   }
   await db.delete(replies).where(eq(replies.id, s.r.id));
+  await db.execute(
+    sql`UPDATE discussions SET reply_count = GREATEST(0, reply_count - 1), updated_at = now() WHERE id = ${s.d.id}`,
+  );
   return json({ ok: true }, 200);
 };
 

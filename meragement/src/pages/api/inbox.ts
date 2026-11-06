@@ -1,11 +1,12 @@
 // src/pages/api/inbox.ts — inbox Gmail via IMAP (server-side).
-// Auth: cookie session better-auth (requireUser). Legacy INBOX_API_TOKEN dipertahankan
+// Auth: cookie session better-auth (hanya admin). Legacy INBOX_API_TOKEN dipertahankan
 // untuk pemanggil non-browser (cron/internal) bila dikonfigurasi.
 // - Secret HANYA dari server env (tanpa prefix PUBLIC_).
 // - TLS verify ON, batasi search, pastikan connection.end()
+import crypto from "node:crypto";
 import Imap from "imap-simple";
 import type { InboxEmail } from "@/lib/types";
-import { requireUser, json as jsonRes } from "@/lib/server-auth";
+import { requireUser, isAdmin, json as jsonRes } from "@/lib/server-auth";
 
 interface ImapHeader {
   from?: string[];
@@ -40,19 +41,38 @@ function getBearerToken(req: Request): string {
   return authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
 }
 
-async function assertAuthorized(req: Request): Promise<boolean> {
-  // Jalur utama: cookie session better-auth (browser fetch tanpa header khusus).
-  if (await requireUser(req)) return true;
+function safeCompare(a: string, b: string): boolean {
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  if (bufA.length !== bufB.length) return false;
+  return crypto.timingSafeEqual(bufA, bufB);
+}
+
+type AuthResult = "ok" | "unauthorized" | "forbidden";
+
+async function assertAuthorized(req: Request): Promise<AuthResult> {
   // Jalur legacy: service token untuk pemanggil non-browser bila dikonfigurasi.
   const token = getBearerToken(req);
-  if (!token) return false;
   const expected = getServerEnv("INBOX_API_TOKEN");
-  return !!expected && token === expected;
+  if (token && expected && safeCompare(token, expected)) {
+    return "ok";
+  }
+
+  // Jalur utama: cookie session better-auth. HANYA admin yang berhak baca inbox.
+  const me = await requireUser(req);
+  if (!me) return "unauthorized";
+  if (!isAdmin(me)) return "forbidden";
+
+  return "ok";
 }
 
 export async function GET({ request }: { request: Request }): Promise<Response> {
-  if (!(await assertAuthorized(request))) {
+  const authStatus = await assertAuthorized(request);
+  if (authStatus === "unauthorized") {
     return json({ error: "unauthorized" }, 401);
+  }
+  if (authStatus === "forbidden") {
+    return json({ error: "forbidden: inbox hanya untuk admin" }, 403);
   }
 
   // Server-only secrets — JANGAN pakai import.meta.env.PUBLIC_*

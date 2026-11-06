@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { apiGet, apiPost, apiDelete } from "@/lib/api-client";
 import { useSpaceEvents } from "@/lib/hooks/useSpaceEvents";
+import { useSmartPolling } from "@/lib/hooks/useSmartPolling";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { motion, AnimatePresence } from "framer-motion";
@@ -115,85 +116,72 @@ export default function TaskPage({ projectId }: TaskPageProps) {
     return () => { cancelled = true; };
   }, [projectId]);
 
-  // Lists via API (poll 10s pengganti onSnapshot)
+  // Lists via API (cerdas: pause saat background, fallback 60s)
   const activeListIdRef = useRef<string | null>(null);
   activeListIdRef.current = activeListId;
-  useEffect(() => {
+
+  const loadLists = useCallback(async (): Promise<void> => {
     if (!projectId) return;
-    let cancelled = false;
-    const load = async (): Promise<void> => {
-      try {
-        const data = await apiGet<SpaceList[]>(`/api/projects/${projectId}/lists`);
-        if (cancelled) return;
-        setLists(data);
-        if (!activeListIdRef.current && data.length > 0) {
-          setActiveListId(data[0].id);
-        }
-      } catch {
-        /* abaikan */
+    try {
+      const data = await apiGet<SpaceList[]>(`/api/projects/${projectId}/lists`);
+      setLists(data);
+      if (!activeListIdRef.current && data.length > 0) {
+        setActiveListId(data[0].id);
       }
-    };
-    void load();
-    const t = setInterval(() => void load(), 10000);
-    return () => { cancelled = true; clearInterval(t); };
+    } catch {
+      /* abaikan */
+    }
   }, [projectId]);
 
-  // Tasks per activeList (poll 10s pengganti onSnapshot)
-  // `refreshTasks` dipakai bersama oleh poll, create, delete, dan update inline
-  // supaya setiap mutasi langsung terlihat tanpa nunggu tick berikutnya.
-  const refreshTasks = useCallback(async (): Promise<void> => {
-    if (!activeListIdRef.current) return;
+  useEffect(() => {
+    void loadLists();
+  }, [loadLists]);
+
+  // Lists safety net: poll 60s dan pause otomatis jika tab background
+  useSmartPolling(loadLists, { intervalMs: 60000, enabled: !!projectId });
+
+  // Tasks per activeList
+  // `refreshTasks` dipakai bersama oleh mutasi (create/edit/delete), SSE change event,
+  // dan fallback polling saat tab aktif.
+  const refreshTasks = useCallback(async (showLoading = false): Promise<void> => {
+    const targetListId = activeListIdRef.current;
+    if (!projectId || !targetListId) {
+      if (!targetListId) setLoading(false);
+      return;
+    }
+    if (showLoading) setLoading(true);
     try {
       const taskList = await apiGet<Task[]>(
-        `/api/projects/${projectId}/lists/${activeListIdRef.current}/tasks`,
+        `/api/projects/${projectId}/lists/${targetListId}/tasks`,
       );
       setServerTasks(taskList);
       const cats = [...new Set(taskList.flatMap((t) => t.category || []))];
       setProjectCategories(cats);
     } catch {
       /* diabaikan — poll berikutnya yang menyusul */
+    } finally {
+      if (showLoading) setLoading(false);
     }
   }, [projectId]);
 
-  // Poll 10s (list tasks aktif, pengganti onSnapshot). Sebagai safety net kalau
-  // SSE terputus; SSE pulang lagi biasanya jauh lebih cepat dari 10 detik.
+  // Initial load saat projectId atau activeListId berubah
   useEffect(() => {
     if (!projectId || !activeListId) {
       setServerTasks([]);
       setLoading(false);
       return;
     }
-    const t = setInterval(() => void refreshTasks(), 10000);
-    return () => clearInterval(t);
+    void refreshTasks(true);
   }, [projectId, activeListId, refreshTasks]);
 
-  // SSE: sinyal dari server tiap ada write di project ini → refetch tasks aktif.
-  useSpaceEvents({ projectId, onChange: refreshTasks });
+  // Tasks safety net: poll 45s dan pause jika tab background/inactive (menghemat Vercel Compute & bandwidth)
+  useSmartPolling(() => refreshTasks(false), {
+    intervalMs: 45000,
+    enabled: !!projectId && !!activeListId,
+  });
 
-  useEffect(() => {
-    if (!projectId || !activeListId) {
-      setServerTasks([]);
-      setLoading(false);
-      return;
-    }
-    let cancelled = false;
-    setLoading(true);
-    const load = async (): Promise<void> => {
-      try {
-        const taskList = await apiGet<Task[]>(`/api/projects/${projectId}/lists/${activeListId}/tasks`);
-        if (cancelled) return;
-        setServerTasks(taskList);
-        setLoading(false);
-        const cats = [...new Set(taskList.flatMap((t) => t.category || []))];
-        setProjectCategories(cats);
-      } catch {
-        if (!cancelled) setLoading(false);
-      }
-    };
-    void load();
-    const t = setInterval(() => void load(), 10000);
-    return () => { cancelled = true; clearInterval(t); };
-  }, [projectId, activeListId]);
+  // SSE: sinyal dari server tiap ada write di project ini → refetch tasks aktif seketika (<2.5s)
+  useSpaceEvents({ projectId, onChange: () => void refreshTasks(false) });
 
   // Switch list
   const switchList = (listId: string): void => {
