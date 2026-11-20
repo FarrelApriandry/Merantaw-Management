@@ -1,6 +1,6 @@
 import { toast } from "sonner";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, FileText, Trash2, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -48,19 +48,105 @@ export default function DocsPage({ projectId }: DocsPageProps) {
   const [newTitle, setNewTitle] = useState<string>("");
   const [newCategory, setNewCategory] = useState<string>("Wiki");
 
+  const docsRef = useRef<DocItem[]>([]);
+  useEffect(() => {
+    docsRef.current = docs;
+  }, [docs]);
+
+  // Baca query parameter doc / id dari URL browser
+  const getDocIdFromUrl = useCallback((): string | null => {
+    if (typeof window === "undefined") return null;
+    const params = new URLSearchParams(window.location.search);
+    return params.get("doc") || params.get("id");
+  }, []);
+
+  const openDoc = useCallback((doc: DocItem) => {
+    setActiveDoc(doc);
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.set("doc", doc.id);
+      window.history.pushState({ docId: doc.id }, "", url);
+    }
+  }, []);
+
+  const handleBack = useCallback(() => {
+    setActiveDoc(null);
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("doc");
+      url.searchParams.delete("id");
+      window.history.pushState({}, "", url);
+    }
+  }, []);
+
   const load = useCallback(async (): Promise<void> => {
     try {
       const list = await apiGet<DocItem[]>(`/api/projects/${projectId}/docs`);
       setDocs(list);
-    } catch { /* abaikan */ } finally {
+      docsRef.current = list;
+
+      // Sinkronkan activeDoc dengan URL query string
+      const docId = getDocIdFromUrl();
+      if (docId) {
+        const found = list.find((d) => d.id === docId);
+        if (found) {
+          setActiveDoc((prev) => (prev?.id === found.id ? prev : found));
+        } else {
+          // Jika tidak ada di list lokal, coba fetch satu doc via API spesifik
+          try {
+            const single = await apiGet<DocItem>(`/api/projects/${projectId}/docs/${docId}`);
+            if (single) {
+              setActiveDoc(single);
+            }
+          } catch {
+            // Jika dokumen tidak valid atau sudah dihapus, bersihkan query param
+            if (typeof window !== "undefined") {
+              const url = new URL(window.location.href);
+              url.searchParams.delete("doc");
+              url.searchParams.delete("id");
+              window.history.replaceState({}, "", url);
+            }
+            setActiveDoc(null);
+          }
+        }
+      }
+    } catch {
+      /* abaikan */
+    } finally {
       setLoading(false);
     }
-  }, [projectId]);
+  }, [projectId, getDocIdFromUrl]);
 
   useEffect(() => {
     if (!projectId) return;
     void load();
   }, [projectId, load]);
+
+  // Handle navigasi tombol back/forward di browser
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const onPopState = () => {
+      const docId = getDocIdFromUrl();
+      if (!docId) {
+        setActiveDoc(null);
+      } else {
+        const found = docsRef.current.find((d) => d.id === docId);
+        if (found) {
+          setActiveDoc(found);
+        } else {
+          apiGet<DocItem>(`/api/projects/${projectId}/docs/${docId}`)
+            .then((single) => {
+              if (single) setActiveDoc(single);
+            })
+            .catch(() => setActiveDoc(null));
+        }
+      }
+    };
+
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, [projectId, getDocIdFromUrl]);
 
   // Fallback poll cerdas 45s (pause saat tab hidden)
   useSmartPolling(load, { intervalMs: 45000, enabled: !!projectId });
@@ -87,7 +173,7 @@ export default function DocsPage({ projectId }: DocsPageProps) {
       setCreateOpen(false);
       // Refetch supaya grid list sinkron (updatedAt, urutan) dengan server.
       await load();
-      setActiveDoc({ id: ref.id, title: newTitle.trim(), content, category: newCategory });
+      openDoc({ id: ref.id, title: newTitle.trim(), content, category: newCategory });
     } catch {
       toast.error("Failed to create document");
     }
@@ -99,7 +185,9 @@ export default function DocsPage({ projectId }: DocsPageProps) {
       await apiDelete(`/api/projects/${projectId}/docs/${docId}`);
       // Refetch; filter state lokal langsung jadi tidak relevan kalau perlu.
       await load();
-      if (activeDoc?.id === docId) setActiveDoc(null);
+      if (activeDoc?.id === docId) {
+        handleBack();
+      }
     } catch {
       toast.error("Failed to delete document");
     }
@@ -111,9 +199,22 @@ export default function DocsPage({ projectId }: DocsPageProps) {
         projectId={projectId}
         doc={activeDoc}
         readOnly={readOnly}
-        onBack={() => setActiveDoc(null)}
+        onBack={handleBack}
         onSaved={load}
       />
+    );
+  }
+
+  // Jika URL memiliki param doc saat sedang memuat awal, tampilkan skeleton loading agar tidak kedip grid
+  if (loading && getDocIdFromUrl()) {
+    return (
+      <div className="p-4 md:p-6 bg-[#0D132B] rounded-xl border border-white/5 text-white min-h-[80vh] flex items-center justify-center">
+        <div className="w-64 space-y-3" aria-busy="true" aria-label="Memuat dokumen…">
+          <div className="animate-pulse rounded-lg bg-white/10 h-6 w-2/3 mx-auto" />
+          <div className="animate-pulse rounded-lg bg-white/10 h-4 w-full" />
+          <div className="animate-pulse rounded-lg bg-white/10 h-4 w-1/2 mx-auto" />
+        </div>
+      </div>
     );
   }
 
@@ -178,7 +279,7 @@ export default function DocsPage({ projectId }: DocsPageProps) {
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
                 className="p-4 rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm hover:bg-white/10 transition cursor-pointer group"
-                onClick={() => setActiveDoc(d)}
+                onClick={() => openDoc(d)}
               >
                 <div className="flex items-start justify-between mb-2">
                   <FileText size={20} className="text-blue-400 shrink-0" />

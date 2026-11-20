@@ -181,7 +181,7 @@ export default function DashboardPage({ projectId }: DashboardPageProps) {
               recentDocs.map((d) => (
                 <a
                   key={d.id}
-                  href={`/dashboard/space/${projectId}/docs`}
+                  href={`/dashboard/space/${projectId}/docs?doc=${d.id}`}
                   className="flex items-center justify-between p-2 rounded-lg hover:bg-white/5 transition"
                 >
                   <span className="text-sm truncate">{d.title}</span>

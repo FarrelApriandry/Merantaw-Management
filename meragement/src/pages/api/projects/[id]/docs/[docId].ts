@@ -1,11 +1,27 @@
-// src/pages/api/projects/[id]/docs/[docId].ts — PATCH + DELETE satu doc.
+// src/pages/api/projects/[id]/docs/[docId].ts — GET + PATCH + DELETE satu doc.
 import type { APIRoute } from "astro";
 import { db } from "@/lib/db";
 import { docs } from "@/lib/db/schema";
 import { and, eq } from "drizzle-orm";
-import { requireUser, canWriteProject, getProjectRow, json, isUuid } from "@/lib/server-auth";
+import { requireUser, canReadProject, canWriteProject, getProjectRow, json, isUuid } from "@/lib/server-auth";
 
 export const prerender = false;
+
+export const GET: APIRoute = async ({ request, params }) => {
+  const me = await requireUser(request);
+  if (!me) return json({ error: "unauthorized" }, 401);
+  const p = await getProjectRow(params.id ?? "");
+  if (!p) return json({ error: "project tidak ditemukan" }, 404);
+  if (!canReadProject(me, p)) return json({ error: "forbidden" }, 403);
+  if (!isUuid(params.docId)) return json({ error: "docId tidak valid" }, 400);
+  const rows = await db
+    .select()
+    .from(docs)
+    .where(and(eq(docs.id, params.docId as string), eq(docs.projectId, p.id)))
+    .limit(1);
+  if (!rows.length) return json({ error: "doc tidak ditemukan" }, 404);
+  return json(rows[0], 200);
+};
 
 export const PATCH: APIRoute = async ({ request, params }) => {
   const me = await requireUser(request);
